@@ -24,3 +24,10 @@ secrets.json
 .DS_Store
 *.swp
 *.swo
+
+# Packaging & Testing
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage

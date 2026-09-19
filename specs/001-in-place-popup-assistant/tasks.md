@@ -10,10 +10,10 @@
 
 **Purpose**: Project initialization and basic workspace structure.
 
-- [ ] T001 Create project directories (`src/writing_companion/{core,providers,storage}`, `extension/`, `tests/{unit,integration}`) per implementation plan
-- [ ] T002 Initialize Python packaging configuration in pyproject.toml with dependencies (`httpx`, `pytest`, `pydantic`) and CLI entry point
-- [ ] T003 [P] Create GNOME Shell extension manifest in extension/metadata.json with UUID `writing-assistant@sajjadele.github.com` and GNOME 46 shell version compatibility
-- [ ] T004 [P] Configure development environment and code hygiene settings in pyproject.toml and .gitignore
+- [X] T001 Create project directories (`src/writing_companion/{core,providers,storage}`, `extension/`, `tests/{unit,integration}`) per implementation plan
+- [X] T002 Initialize Python packaging configuration in pyproject.toml with dependencies (`httpx`, `pytest`, `pydantic`) and CLI entry point
+- [X] T003 [P] Create GNOME Shell extension manifest in extension/metadata.json with UUID `writing-assistant@sajjadele.github.com` and GNOME 46 shell version compatibility
+- [X] T004 [P] Configure development environment and code hygiene settings in pyproject.toml and .gitignore
 
 ---
 
@@ -23,13 +23,13 @@
 
 **⚠️ CRITICAL**: No user story implementation can begin until this phase is fully complete.
 
-- [ ] T005 Implement configuration loader in src/writing_companion/config.py for API keys (`GROQ_API_KEY`, `GEMINI_API_KEY`), provider preference (`auto`, `groq`, `gemini`, `ollama`, `mock`), DB path `~/.local/share/writing_companion/history.db`, and 4500ms timeout
-- [ ] T006 [P] Implement core schemas and validation models in src/writing_companion/core/schema.py matching contracts/single-inference-json.json (`is_correct: bool`, `interpreted_meaning_fa: str`, `corrected_text: str`, `changes: list[ChangeItem]`)
-- [ ] T007 [P] Implement SQLite database connection manager and table initialization in src/writing_companion/storage/sqlite_store.py executing contracts/sqlite-schema.sql with `PRAGMA journal_mode=WAL`
-- [ ] T008 [P] Implement abstract provider base class in src/writing_companion/providers/base.py defining `async def generate_correction(text: str) -> CorrectionResponse`
-- [ ] T009 [P] Implement offline mock provider in src/writing_companion/providers/mock_provider.py returning deterministic fixture responses for testing
-- [ ] T010 Implement core orchestrator engine in src/writing_companion/core/engine.py to coordinate provider dispatch, schema validation, latency calculation, and event persistence
-- [ ] T011 Implement IPC CLI handler in src/writing_companion/cli.py reading JSON requests from stdin and outputting structured JSON responses to stdout matching contracts/ipc-protocol.md
+- [X] T005 Implement configuration loader in src/writing_companion/config.py for API keys (`GROQ_API_KEY`, `GEMINI_API_KEY`), provider preference (`auto`, `groq`, `gemini`, `ollama`, `mock`), DB path `~/.local/share/writing_companion/history.db`, and 4500ms timeout
+- [X] T006 [P] Implement core schemas and validation models in src/writing_companion/core/schema.py matching contracts/single-inference-json.json (`is_correct: bool`, `interpreted_meaning_fa: str`, `corrected_text: str`, `changes: list[ChangeItem]`)
+- [X] T007 [P] Implement SQLite database connection manager and table initialization in src/writing_companion/storage/sqlite_store.py executing contracts/sqlite-schema.sql with `PRAGMA journal_mode=WAL`
+- [X] T008 [P] Implement abstract provider base class in src/writing_companion/providers/base.py defining `async def generate_correction(text: str) -> CorrectionResponse`
+- [X] T009 [P] Implement offline mock provider in src/writing_companion/providers/mock_provider.py returning deterministic fixture responses for testing
+- [X] T010 Implement core orchestrator engine in src/writing_companion/core/engine.py to coordinate provider dispatch, schema validation, latency calculation, and event persistence
+- [X] T011 Implement IPC CLI handler in src/writing_companion/cli.py reading JSON requests from stdin and outputting structured JSON responses to stdout matching contracts/ipc-protocol.md
 
 **Checkpoint**: Foundation ready — backend service, IPC CLI, and schemas are operational. User story implementations can proceed.
 
@@ -43,15 +43,15 @@
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Implement CLI IPC integration tests in tests/integration/test_cli_ipc.py validating `correct` and `log_feedback` actions with mock provider
-- [ ] T013 [P] [US1] Implement GNOME Shell extension stylesheet in extension/stylesheet.css with compact dark card layout, rounded corners, subtle drop-shadows, and typographic hierarchy
-- [ ] T014 [US1] Implement virtual keyboard controller in extension/keyboard.js using `Clutter.InputDeviceType.KEYBOARD_DEVICE` to emit `Shift + Insert` for in-place text replacement
-- [ ] T015 [US1] Implement in-compositor popup card actor in extension/popup.js using `St.Widget` anchored to `global.get_pointer()` with loading spinner and English text container
-- [ ] T016 [US1] Implement empty selection detection in extension/popup.js displaying a transient notification toast ("Please select text first") and exiting immediately when selection is empty
-- [ ] T017 [US1] Implement extension lifecycle, shortcut binding (`Ctrl + Alt + G`), primary selection capture, and non-blocking IPC dispatch via `Gio.Subprocess` in extension/extension.js
-- [ ] T018 [US1] Implement Groq cloud provider in src/writing_companion/providers/groq_provider.py using Llama 3.3 70B for sub-300ms inference
-- [ ] T019 [US1] Implement Gemini Flash cloud provider in src/writing_companion/providers/gemini_provider.py for high-speed fallback
-- [ ] T020 [US1] Implement Enter key binding in extension/popup.js to update clipboards, trigger auto-paste via extension/keyboard.js, dispatch `log_feedback` IPC request, and cleanly dismiss the card
+- [X] T012 [P] [US1] Implement CLI IPC integration tests in tests/integration/test_cli_ipc.py validating `correct` and `log_feedback` actions with mock provider
+- [X] T013 [P] [US1] Implement GNOME Shell extension stylesheet in extension/stylesheet.css with compact dark card layout, rounded corners, subtle drop-shadows, and typographic hierarchy
+- [X] T014 [US1] Implement virtual keyboard controller in extension/keyboard.js using `Clutter.InputDeviceType.KEYBOARD_DEVICE` to emit `Shift + Insert` for in-place text replacement
+- [X] T015 [US1] Implement in-compositor popup card actor in extension/popup.js using `St.Widget` anchored to `global.get_pointer()` with loading spinner and English text container
+- [X] T016 [US1] Implement empty selection detection in extension/popup.js displaying a transient notification toast ("Please select text first") and exiting immediately when selection is empty
+- [X] T017 [US1] Implement extension lifecycle, shortcut binding (`Ctrl + Alt + G`), primary selection capture, and non-blocking IPC dispatch via `Gio.Subprocess` in extension/extension.js
+- [X] T018 [US1] Implement Groq cloud provider in src/writing_companion/providers/groq_provider.py using Llama 3.3 70B for sub-300ms inference
+- [X] T019 [US1] Implement Gemini Flash cloud provider in src/writing_companion/providers/gemini_provider.py for high-speed fallback
+- [X] T020 [US1] Implement Enter key binding in extension/popup.js to update clipboards, trigger auto-paste via extension/keyboard.js, dispatch `log_feedback` IPC request, and cleanly dismiss the card
 
 **Checkpoint**: User Story 1 (MVP) is fully functional and testable end-to-end in the GNOME desktop session.
 
@@ -65,12 +65,12 @@
 
 ### Implementation for User Story 2
 
-- [ ] T021 [P] [US2] Implement unit tests in tests/unit/test_prompt.py verifying Minimal Intervention rules, code preservation, and bracket bridge word extraction
-- [ ] T022 [P] [US2] Implement contract validation tests in tests/unit/test_schema.py validating `is_correct: true` responses and `ChangeItem` categories
-- [ ] T023 [US2] Implement single-inference prompt templates in src/writing_companion/core/prompt.py with strict rules for code freezing, Persian semantic interpretation, and bracket placeholder resolution
-- [ ] T024 [US2] Integrate prompt templates into src/writing_companion/core/engine.py ensuring provider output matches single-inference contract before emission
-- [ ] T025 [US2] Implement Persian semantic checkpoint label (`💡 منظور: ...`) with RTL text layout and custom typography in extension/popup.js
-- [ ] T026 [US2] Implement "No Change Needed" green confirmation card state in extension/popup.js when `data.is_correct` is true, omitting cosmetic replacements
+- [X] T021 [P] [US2] Implement unit tests in tests/unit/test_prompt.py verifying Minimal Intervention rules, code preservation, and bracket bridge word extraction
+- [X] T022 [P] [US2] Implement contract validation tests in tests/unit/test_schema.py validating `is_correct: true` responses and `ChangeItem` categories
+- [X] T023 [US2] Implement single-inference prompt templates in src/writing_companion/core/prompt.py with strict rules for code freezing, Persian semantic interpretation, and bracket placeholder resolution
+- [X] T024 [US2] Integrate prompt templates into src/writing_companion/core/engine.py ensuring provider output matches single-inference contract before emission
+- [X] T025 [US2] Implement Persian semantic checkpoint label (`💡 منظور: ...`) with RTL text layout and custom typography in extension/popup.js
+- [X] T026 [US2] Implement "No Change Needed" green confirmation card state in extension/popup.js when `data.is_correct` is true, omitting cosmetic replacements
 
 **Checkpoint**: User Story 2 anti-drift guardrail is operational; code terms are protected and Persian semantic intent is verified.
 
@@ -84,11 +84,11 @@
 
 ### Implementation for User Story 3
 
-- [ ] T027 [P] [US3] Implement storage unit tests in tests/unit/test_storage.py verifying SQLite insertion, WAL mode pragmas, indexing, and acceptance status updates
-- [ ] T028 [US3] Implement event insertion method `record_event()` in src/writing_companion/storage/sqlite_store.py persisting `CorrectionEvent` with timestamp and duration
-- [ ] T029 [US3] Implement feedback update method `update_acceptance()` in src/writing_companion/storage/sqlite_store.py setting `accepted = 1` on Enter or `accepted = 0` on dismissal
-- [ ] T030 [US3] Hook `log_feedback` action in src/writing_companion/cli.py and src/writing_companion/core/engine.py to update SQLite records via event ID
-- [ ] T031 [US3] Implement Esc key and outside-click dismissal handler in extension/popup.js dispatching `accepted: false` via IPC before closing the actor
+- [X] T027 [P] [US3] Implement storage unit tests in tests/unit/test_storage.py verifying SQLite insertion, WAL mode pragmas, indexing, and acceptance status updates
+- [X] T028 [US3] Implement event insertion method `record_event()` in src/writing_companion/storage/sqlite_store.py persisting `CorrectionEvent` with timestamp and duration
+- [X] T029 [US3] Implement feedback update method `update_acceptance()` in src/writing_companion/storage/sqlite_store.py setting `accepted = 1` on Enter or `accepted = 0` on dismissal
+- [X] T030 [US3] Hook `log_feedback` action in src/writing_companion/cli.py and src/writing_companion/core/engine.py to update SQLite records via event ID
+- [X] T031 [US3] Implement Esc key and outside-click dismissal handler in extension/popup.js dispatching `accepted: false` via IPC before closing the actor
 
 **Checkpoint**: All interactions are persisted locally with zero external network telemetry; learning profile data is accumulating.
 
@@ -98,10 +98,10 @@
 
 **Purpose**: System resilience, UI polish, edge cases, and end-to-end quickstart validation.
 
-- [ ] T032 [P] Implement smooth internal scrolling (`St.ScrollView`) in extension/popup.js for long text selections exceeding 800 characters
-- [ ] T033 [P] Implement 4500ms subprocess timeout watchdog and error state card in extension/extension.js per contracts/ipc-protocol.md
-- [ ] T034 [P] Implement local Ollama fallback provider in src/writing_companion/providers/ollama_provider.py for offline resilience
-- [ ] T035 Execute full manual validation checklist per specs/001-in-place-popup-assistant/quickstart.md across terminal, text editor, and web browser
+- [X] T032 [P] Implement smooth internal scrolling (`St.ScrollView`) in extension/popup.js for long text selections exceeding 800 characters
+- [X] T033 [P] Implement 4500ms subprocess timeout watchdog and error state card in extension/extension.js per contracts/ipc-protocol.md
+- [X] T034 [P] Implement local Ollama fallback provider in src/writing_companion/providers/ollama_provider.py for offline resilience
+- [X] T035 Execute full manual validation checklist per specs/001-in-place-popup-assistant/quickstart.md across terminal, text editor, and web browser
 
 ---
 

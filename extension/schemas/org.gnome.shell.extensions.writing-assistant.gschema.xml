@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.writing-assistant" path="/org/gnome/shell/extensions/writing-assistant/">
+    <key name="toggle-assistant" type="as">
+      <default><![CDATA[['<Control><Alt>g']]]></default>
+      <summary>Toggle Writing Assistant Popup</summary>
+      <description>Global shortcut to evaluate selected text and open in-place popup</description>
+    </key>
+  </schema>
+</schemalist>

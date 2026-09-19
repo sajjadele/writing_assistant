@@ -1,0 +1,9 @@
+{
+  "name": "Writing Assistant",
+  "description": "System-wide English Expression & Learning Companion with in-place mouse popup",
+  "uuid": "writing-assistant@sajjadele.github.com",
+  "shell-version": [
+    "46"
+  ],
+  "url": "https://github.com/sajjadele/writing_assistant"
+}
