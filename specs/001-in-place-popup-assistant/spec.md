@@ -59,8 +59,8 @@ As a privacy-focused professional, I want all my writing corrections and accepta
 
 ### Edge Cases
 
-- **Empty Selection**: What happens when the user triggers the shortcut without highlighting any text? [NEEDS CLARIFICATION: Should an inline input field appear within the popup for direct typing, or should a brief system notification prompt the user to select text?]
-- **Application Replacement Method**: How should the system deliver the corrected text to the target application on Enter? [NEEDS CLARIFICATION: Should the system simulate automatic paste (Shift+Insert/Ctrl+V) directly into the target field, or copy to the clipboard for manual pasting?]
+- **Empty Selection**: When the user triggers the shortcut without any text highlighted, the system MUST display a lightweight, transient notification toast adjacent to the pointer ("Please select text first") and exit immediately without opening an empty card.
+- **Application Replacement Method (Auto-Paste)**: On pressing `Enter`, the system MUST update both primary and regular clipboards and immediately simulate an automatic paste keystroke (`Shift + Insert` or `Ctrl + V`) via the compositor's virtual input device to replace the selected text in-place with zero additional clicks.
 - **Network or AI Latency Spike**: If the AI inference takes longer than 500ms, the popup MUST display a subtle loading/thinking state rather than leaving the user uncertain.
 - **Very Long Selection**: When highlighted text exceeds 800 characters, the popup card MUST support internal smooth scrolling rather than expanding beyond the viewport.
 
