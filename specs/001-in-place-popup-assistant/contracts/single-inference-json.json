@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SingleInferenceCorrectionResponse",
+  "description": "Structured schema returned by the AI provider in a single inference turn (Constitution Principle IV / ADR-04)",
+  "type": "object",
+  "properties": {
+    "is_correct": {
+      "type": "boolean",
+      "description": "True if the original user text is already grammatically and idiomatically acceptable without modification"
+    },
+    "interpreted_meaning_fa": {
+      "type": "string",
+      "description": "Semantic checkpoint in Persian summarizing the detected user intent to prevent semantic drift"
+    },
+    "corrected_text": {
+      "type": "string",
+      "description": "The proposed natural, fluent English expression preserving original technical identifiers"
+    },
+    "changes": {
+      "type": "array",
+      "description": "Granular breakdown of modifications made to the text for educational feedback",
+      "items": {
+        "$ref": "#/$defs/ChangeItem"
+      }
+    }
+  },
+  "required": [
+    "is_correct",
+    "interpreted_meaning_fa",
+    "corrected_text",
+    "changes"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "ChangeItem": {
+      "type": "object",
+      "properties": {
+        "original": {
+          "type": "string",
+          "description": "The original word, phrase, or bracketed Persian placeholder"
+        },
+        "replacement": {
+          "type": "string",
+          "description": "The replacement word or phrase in English"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "grammar",
+            "word_choice",
+            "phrasing_idiom",
+            "bracket_translation"
+          ],
+          "description": "Category of linguistic modification"
+        },
+        "explanation_fa": {
+          "type": "string",
+          "description": "Brief pedagogical micro-explanation in Persian"
+        }
+      },
+      "required": [
+        "original",
+        "replacement",
+        "category",
+        "explanation_fa"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
