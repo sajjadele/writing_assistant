@@ -42,13 +42,62 @@ export class InPlacePopup {
     }
 
     /**
+     * Smart adaptive positioning anchored to cursor or active input box.
+     */
+    _updatePosition() {
+        if (!this._actor) return;
+
+        let [x, y] = global.get_pointer();
+        const focusWindow = global.display.focus_window;
+
+        if (focusWindow) {
+            const rect = focusWindow.get_frame_rect();
+            // If pointer was left on a different window or top bar, anchor near active window
+            const isOutside = (
+                x < rect.x || x > rect.x + rect.width ||
+                y < rect.y || y > rect.y + rect.height
+            );
+            if (isOutside) {
+                x = Math.round(rect.x + rect.width * 0.35);
+                y = Math.round(rect.y + rect.height - 100);
+            }
+        }
+
+        const monitor = Main.layoutManager.currentMonitor || Main.layoutManager.primaryMonitor;
+        const [actorW, actorH] = this._actor.get_transformed_size();
+        const width = actorW > 50 ? actorW : 420;
+        const height = actorH > 30 ? actorH : 200;
+
+        // Horizontal positioning: default to x + 15, flip left if overflowing
+        let posX = x + 15;
+        if (posX + width > monitor.x + monitor.width - 20) {
+            posX = x - width - 15;
+        }
+        posX = Math.max(monitor.x + 20, Math.min(posX, monitor.x + monitor.width - width - 20));
+
+        // Vertical positioning:
+        // If cursor is in the lower 55% of the screen, open ABOVE the cursor
+        let posY;
+        const isLowerHalf = y > (monitor.y + monitor.height * 0.55);
+        if (isLowerHalf) {
+            posY = y - height - 15;
+        } else {
+            posY = y + 15;
+        }
+
+        // Clamp vertically inside monitor bounds (leaving space for top bar)
+        posY = Math.max(monitor.y + 40, Math.min(posY, monitor.y + monitor.height - height - 20));
+
+        this._actor.set_position(posX, posY);
+        console.log(`[WritingAssistant] Popup positioned at (${posX}, ${posY}) for target (${x}, ${y}), size=(${width}, ${height}), isLowerHalf=${isLowerHalf}`);
+    }
+
+    /**
      * Open popup in loading state anchored to cursor (T015).
      */
     showLoading(onDismiss) {
         this.close();
         this._onDismiss = onDismiss;
-
-        const [x, y] = global.get_pointer();
 
         this._actor = new St.BoxLayout({
             vertical: true,
@@ -82,11 +131,8 @@ export class InPlacePopup {
         // Add to Mutter compositor scene graph
         Main.uiGroup.add_child(this._actor);
 
-        // Clamp coordinates within monitor bounds
-        const monitor = Main.layoutManager.findMonitorForActor(this._actor);
-        const posX = Math.min(x + 15, monitor.x + monitor.width - 460);
-        const posY = Math.min(y + 15, monitor.y + monitor.height - 240);
-        this._actor.set_position(Math.max(monitor.x + 10, posX), Math.max(monitor.y + 10, posY));
+        // Set initial position
+        this._updatePosition();
 
         // Grab keyboard focus for Enter/Esc
         this._setupEvents();
@@ -172,6 +218,12 @@ export class InPlacePopup {
         footer.add_child(escKey);
         footer.add_child(dismissLabel);
         this._contentBox.add_child(footer);
+
+        // Re-calculate position dynamically once content layout is allocated
+        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._updatePosition();
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     /**

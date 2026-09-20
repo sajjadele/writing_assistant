@@ -122,3 +122,63 @@ class SQLiteStore:
                         d["changes"] = []
                 return d
             return None
+
+    def list_events(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        search: str = "",
+        accepted_filter: Optional[bool] = None,
+    ) -> List[Dict[str, Any]]:
+        """List correction events with search and filter support."""
+        query = "SELECT * FROM correction_events WHERE 1=1"
+        params: List[Any] = []
+
+        if search.strip():
+            query += " AND (original_text LIKE ? OR corrected_text LIKE ? OR interpreted_meaning_fa LIKE ?)"
+            term = f"%{search.strip()}%"
+            params.extend([term, term, term])
+
+        if accepted_filter is not None:
+            query += " AND accepted = ?"
+            params.append(1 if accepted_filter else 0)
+
+        query += " ORDER BY id DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            results = []
+            for row in cursor.fetchall():
+                d = dict(row)
+                d["is_correct"] = bool(d["is_correct"])
+                d["accepted"] = bool(d["accepted"])
+                if d["changes_json"]:
+                    try:
+                        d["changes"] = json.loads(d["changes_json"])
+                    except Exception:
+                        d["changes"] = []
+                results.append(d)
+            return results
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Aggregate usage metrics from local database."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*), SUM(accepted), AVG(duration_ms) FROM correction_events")
+            row = cursor.fetchone()
+            total = row[0] or 0
+            accepted = row[1] or 0
+            avg_duration = round(row[2] or 0, 1)
+
+            cursor.execute("SELECT COUNT(*) FROM correction_events WHERE changes_json LIKE '%bracket_translation%'")
+            bracket_count = cursor.fetchone()[0] or 0
+
+            return {
+                "total_events": total,
+                "accepted_events": accepted,
+                "dismissed_events": total - accepted,
+                "bracket_translations": bracket_count,
+                "avg_duration_ms": avg_duration,
+            }

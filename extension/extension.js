@@ -1,10 +1,7 @@
-/**
- * Writing Assistant GNOME Shell Extension (GNOME 46 / Wayland / Pop-Shell safe).
- * Manages global shortcut, primary selection grab, async Gio.Subprocess IPC, and auto-paste.
- */
-
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import Shell from 'gi://Shell';
 import Meta from 'gi://Meta';
 import Gio from 'gi://Gio';
@@ -20,7 +17,7 @@ export default class WritingAssistantExtension extends Extension {
         this._keyboard = new VirtualKeyboard();
         this._settings = this.getSettings();
 
-        // Register global shortcut
+        // 1. Register global shortcut
         Main.wm.addKeybinding(
             'toggle-assistant',
             this._settings,
@@ -29,11 +26,40 @@ export default class WritingAssistantExtension extends Extension {
             () => this._triggerAssistant()
         );
 
-        console.log('[WritingAssistant] Extension enabled successfully.');
+        // 2. Add Top Panel Indicator (Tray Menu)
+        this._indicator = new PanelMenu.Button(0.0, 'WritingAssistantIndicator', false);
+        const icon = new St.Icon({
+            icon_name: 'accessories-dictionary-symbolic',
+            style_class: 'system-status-icon',
+        });
+        this._indicator.add_child(icon);
+
+        const titleItem = new PopupMenu.PopupMenuItem('✨ Writing Assistant', { reactive: false });
+        this._indicator.menu.addMenuItem(titleItem);
+
+        this._indicator.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+        const dashboardItem = new PopupMenu.PopupMenuItem('⚙️  Open Dashboard & Settings');
+        dashboardItem.connect('activate', () => {
+            this._launchDashboard();
+        });
+        this._indicator.menu.addMenuItem(dashboardItem);
+
+        const shortcutItem = new PopupMenu.PopupMenuItem('⌨️  Shortcut: Ctrl + Alt + G', { reactive: false });
+        this._indicator.menu.addMenuItem(shortcutItem);
+
+        Main.panel.addToStatusArea('writing-assistant-indicator', this._indicator);
+
+        console.log('[WritingAssistant] Extension enabled with top panel indicator.');
     }
 
     disable() {
         Main.wm.removeKeybinding('toggle-assistant');
+
+        if (this._indicator) {
+            this._indicator.destroy();
+            this._indicator = null;
+        }
 
         if (this._popup) {
             this._popup.close();
@@ -44,6 +70,18 @@ export default class WritingAssistantExtension extends Extension {
         this._settings = null;
 
         console.log('[WritingAssistant] Extension disabled cleanly.');
+    }
+
+    _launchDashboard() {
+        const pythonPath = this._getPythonExecutable();
+        try {
+            Gio.Subprocess.new(
+                [pythonPath, '-m', 'writing_companion.cli', '--dashboard'],
+                Gio.SubprocessFlags.NONE
+            );
+        } catch (e) {
+            console.error('[WritingAssistant] Failed to launch dashboard:', e);
+        }
     }
 
     _triggerAssistant() {

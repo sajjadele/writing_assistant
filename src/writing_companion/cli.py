@@ -121,10 +121,14 @@ def main() -> None:
     """CLI entrypoint."""
     parser = argparse.ArgumentParser(description="Writing Companion CLI & IPC service")
     parser.add_argument("--ipc", action="store_true", help="Run in JSON standard stream IPC mode")
+    parser.add_argument("--dashboard", action="store_true", help="Launch Libadwaita desktop dashboard and settings GUI")
     parser.add_argument("--text", type=str, help="Evaluate text directly from CLI")
     args = parser.parse_args()
 
-    if args.ipc:
+    if args.dashboard:
+        from writing_companion.ui.dashboard import run_dashboard
+        run_dashboard()
+    elif args.ipc:
         asyncio.run(handle_ipc())
     elif args.text:
         engine = build_engine()
