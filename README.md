@@ -37,24 +37,49 @@
 ## 🚀 وضعیت کنونی پروژه (Current Status)
 
 * **✅ Milestone 0 — Technical Spike #1 (Passed):**
-  * خواندن متن سلکت‌شده با `wl-paste --primary` در محیط Wayland تست و تایید شد.
-  * کلید میانبر سراسری گنوم (`Ctrl + Alt + G`) فعال و به اسکریپت این دایرکتوری متصل شد.
-  * پنجره شناور GTK4 با چِک‌پوینت معنایی و کنترل کیبورد (`Enter` / `Esc`) در عمل اثبات شد.
-* **⏳ Milestone 1 — Core MVP (Ready to Build):**
-  * اتصال پنجره به هوش مصنوعی زنده (API پرسرعت مثل Groq یا Gemini Flash).
-  * پیاده‌سازی پرامپت استخراج نیت و خروجی ساختاریافته JSON.
-  * فعال‌سازی پایگاه داده محلی SQLite برای ثبت رویدادها.
+  * اثبات استخراج متن سلکت‌شده در Wayland و بررسی رفتار Pop-Shell.
+* **✅ Milestone 1 — In-Place Popup & Core Engine (Implemented & 100% Tested):**
+  * **متدولوژی Spec-Kit:** اجرای کامل چرخه `specify → plan → tasks → analyze → implement` و تکمیل ۳۵ تسک مهندسی‌شده.
+  * **هسته منطقی (Core Engine):** پیاده‌سازی پکیج پایتونی `src/writing_companion` با پروتکل تک‌مرحله‌ای JSON، چک‌پوینت معنایی فارسی، حفاظت از کدها و دیتابیس SQLite محلی با مد WAL.
+  * **پرووایدرهای هوش مصنوعی:** پشتیبانی آماده از `MockProvider` (آفلاین)، `GroqProvider` (مدل Llama 3.3 70B زیر ۳۰۰ms)، `GeminiProvider` و `OllamaProvider`.
+  * **آداپتور کامپوزیتور گنوم:** افزونه `extension/` با پاپ‌آپ درجا کنار ماوس (`global.get_pointer()`) مصون از تایلینگ Pop-Shell، و جایگزینی خودکار متن با فشردن کلید `Enter` (شبیه‌ساز `Shift + Insert`).
+  * **تست‌های خودکار:** ۱۳ تست خودکار یکپارچگی و یونیت (همگی پاس‌شده).
 
 ---
 
-## ⌨️ نحوه اجرای آزمایشی (Quickstart)
+## ⌨️ نحوه اجرا و راه‌اندازی (Quickstart)
 
-کلید میانبر سراسری در حال حاضر در سیستم فعال است:
-1. در هر برنامه‌ای (تلگرام، مرورگر، VS Code، ترمینال) متنی را با ماوس سلکت کنید.
-2. کلید **`Ctrl + Alt + G`** را فشار دهید.
-3. پنجره شناور باز می‌شود. با زدن **`Enter`** متن پیشنهادی در کلیپ‌بورد ذخیره و با **`Esc`** لغو می‌شود.
-
-برای اجرای دستی اسکریپت از ترمینال:
+### ۱. فعال‌سازی محیط پایتون و اجرای تست‌ها:
 ```bash
-/usr/bin/python3 /home/sajjad/Desktop/AI_Enginniering/writing_assistant/prototype/spike_hud.py
+# ساخت محیط و نصب پکیج
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+
+# اجرای تست‌های خودکار
+pytest
 ```
+
+### ۲. تست مستقیم هسته در ترمینال (بدون نیاز به کلید API):
+```bash
+# تست عبارت هیبرید با کلمه فارسی داخل براکت
+python3 -m writing_companion.cli --text "Can we [سازگار کنیم] this function with new API?"
+
+# تست جمله بدون اشتباه (Minimal Intervention)
+python3 -m writing_companion.cli --text "This pull request resolves the memory leak."
+```
+
+### ۳. اتصال به مدل‌های ابری (اختیاری):
+برای استفاده از مدل‌های واقعی ابری، کافیست در ریشه پروژه یک فایل `.env` بسازید:
+```env
+GROQ_API_KEY=gsk_...
+# یا
+GEMINI_API_KEY=AIza...
+```
+
+### ۴. فعال‌سازی اکستنشن دسکتاپ:
+اکستنشن در مسیر `~/.local/share/gnome-shell/extensions/writing-assistant@sajjadele.github.com` نصب شده است. پس از یک بار ورود مجدد (Log Out / Log In) به سشن دسکتاپ:
+1. هر متنی را در VS Code یا هر محیط دیگری انتخاب کنید.
+2. کلید **`Ctrl + Alt + G`** را فشار دهید.
+3. با زدن **`Enter`** متن جایگزین می‌شود و با **`Esc`** پاپ‌آپ بسته می‌شود.
+
