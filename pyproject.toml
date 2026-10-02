@@ -21,6 +21,7 @@ dev = [
 
 [project.scripts]
 writing-companion = "writing_companion.cli:main"
+writing-assistant = "writing_companion.ui.app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

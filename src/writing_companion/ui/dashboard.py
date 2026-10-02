@@ -176,7 +176,7 @@ class DashboardWindow(Adw.ApplicationWindow):
 
     def _create_stats_page(self) -> Gtk.Widget:
         page = Adw.PreferencesPage()
-        stats_group = Adw.PreferencesGroup(title="Usage & Accuracy Analytics", description="Real-time metrics computed locally from history.db")
+        stats_group = Adw.PreferencesGroup(title="Usage &amp; Accuracy Analytics", description="Real-time metrics computed locally from history.db")
         page.add(stats_group)
 
         stats = self.store.get_stats()
