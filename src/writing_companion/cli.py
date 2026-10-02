@@ -29,7 +29,7 @@ def build_engine() -> Engine:
     try:
         from writing_companion.providers.gemini_provider import GeminiProvider
         if settings.gemini_api_key:
-            engine.register_provider(GeminiProvider(settings.gemini_api_key, settings.gemini_model))
+            engine.register_provider(GeminiProvider(settings.gemini_api_key, settings.gemini_model, settings.proxy))
     except ImportError:
         pass
 
