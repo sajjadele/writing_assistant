@@ -1,0 +1,19 @@
+[Desktop Entry]
+Name=Writing Assistant
+Comment=System-wide English Expression & Learning Companion
+Exec=writing-assistant --dashboard
+Icon=org.sajjad.WritingAssistant
+Terminal=false
+Type=Application
+Categories=Utility;Education;Office;
+Keywords=English;Writing;Grammar;Companion;AI;
+StartupWMClass=org.sajjad.WritingAssistant
+Actions=HUD;Settings;
+
+[Desktop Action HUD]
+Name=Open Floating HUD
+Exec=writing-assistant --hud
+
+[Desktop Action Settings]
+Name=Open Settings Dashboard
+Exec=writing-assistant --dashboard

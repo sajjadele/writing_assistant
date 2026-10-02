@@ -1,0 +1,12 @@
+Package: writing-assistant
+Version: 0.1.0
+Section: utils
+Priority: optional
+Architecture: all
+Depends: python3 (>= 3.11), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, wl-clipboard, gnome-shell (>= 45)
+Maintainer: Sajjad <sjadshakry87@gmail.com>
+Homepage: https://github.com/sajjadele/writing_assistant
+Description: System-wide English Writing & Expression Companion
+ A hybrid desktop writing companion for Ubuntu / GNOME Wayland.
+ Features an in-place Libadwaita HUD, Persian semantic anti-drift checkpoint,
+ privacy-first local learning profile, and single-click text replacement.
