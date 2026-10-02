@@ -2,6 +2,7 @@
   "name": "Writing Assistant",
   "description": "System-wide English Expression & Learning Companion with in-place mouse popup",
   "uuid": "writing-assistant@sajjadele.github.com",
+  "settings-schema": "org.gnome.shell.extensions.writing-assistant",
   "shell-version": [
     "46"
   ],

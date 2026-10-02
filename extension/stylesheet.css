@@ -1,92 +1,213 @@
-/* Writing Assistant GNOME Shell Extension Stylesheet (Adwaita Dark Theme) */
+/* Writing Assistant GNOME Shell Extension Stylesheet (Modern Adwaita Dark Theme) */
 
 .writing-companion-popup {
-    background-color: rgba(30, 30, 32, 0.96);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 14px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
-    padding: 14px 18px;
-    min-width: 320px;
-    max-width: 480px;
-    spacing: 10px;
+    background-color: rgba(26, 27, 38, 0.98);
+    border: 1.5px solid rgba(255, 255, 255, 0.14);
+    border-radius: 18px;
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.65);
+    padding: 16px 20px;
+    width: 520px;
+    min-width: 480px;
+    max-width: 560px;
+    spacing: 12px;
     color: #f3f4f6;
 }
 
 .writing-companion-header {
-    spacing: 8px;
+    spacing: 10px;
 }
 
 .writing-companion-title {
     font-size: 11pt;
-    font-weight: 700;
-    color: #93c5fd;
+    font-weight: 800;
+    color: #89b4fa;
+    letter-spacing: 0.5px;
 }
 
+.writing-companion-badge {
+    background-color: rgba(137, 180, 250, 0.15);
+    border: 1px solid rgba(137, 180, 250, 0.3);
+    border-radius: 9999px;
+    padding: 2px 8px;
+    font-size: 9pt;
+    color: #89b4fa;
+    font-weight: 600;
+}
+
+/* Persian Semantic Checkpoint (Anti-Drift) */
 .writing-companion-persian-box {
-    background-color: rgba(255, 255, 255, 0.05);
-    border-left: 3px solid #f59e0b;
-    border-radius: 8px;
-    padding: 8px 12px;
+    background-color: rgba(245, 158, 11, 0.08);
+    border-right: 4px solid #f59e0b;
+    border-radius: 12px;
+    padding: 10px 14px;
     spacing: 6px;
+}
+
+.writing-companion-persian-title {
+    font-family: 'Vazirmatn', 'Vazirmatn UI', sans-serif;
+    font-size: 9.5pt;
+    font-weight: 700;
+    color: #fbbf24;
 }
 
 .writing-companion-persian-text {
-    font-size: 11pt;
+    font-family: 'Vazirmatn', 'Vazirmatn UI', sans-serif;
+    font-size: 10.5pt;
     color: #fef3c7;
     font-weight: 500;
+    line-height: 1.55;
 }
 
+/* English Suggested Expression */
 .writing-companion-suggestion-box {
-    background-color: rgba(59, 130, 246, 0.12);
-    border: 1px solid rgba(96, 165, 250, 0.3);
-    border-radius: 8px;
-    padding: 10px 14px;
-    spacing: 6px;
+    background-color: rgba(59, 130, 246, 0.10);
+    border-left: 4px solid #3b82f6;
+    border-radius: 12px;
+    padding: 12px 16px;
+    spacing: 8px;
+}
+
+.writing-companion-suggestion-title {
+    font-size: 9pt;
+    font-weight: 700;
+    color: #93c5fd;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .writing-companion-suggestion-text {
-    font-size: 12pt;
+    font-size: 11.5pt;
     color: #ffffff;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+/* Custom sleek scrollbar for popup */
+.writing-companion-scroll-view {
+    padding-right: 4px;
+}
+
+.writing-companion-scroll-view StScrollBar {
+    min-width: 6px;
+    padding: 0;
+}
+
+.writing-companion-scroll-view StScrollBar StBin#trough {
+    background-color: transparent;
+    border-radius: 0;
+}
+
+.writing-companion-scroll-view StScrollBar StButton#vhandle {
+    background-color: rgba(255, 255, 255, 0.28);
+    border-radius: 6px;
+    border: none;
+    transition-duration: 200ms;
+}
+
+.writing-companion-scroll-view StScrollBar StButton#vhandle:hover {
+    background-color: rgba(255, 255, 255, 0.55);
+}
+
+.writing-companion-scroll-view StScrollBar StButton#vhandle:active {
+    background-color: #89b4fa;
+}
+
+/* Diff Pills Box */
+.writing-companion-diff-container {
+    spacing: 6px;
+    padding-top: 4px;
+}
+
+.writing-companion-diff-pill {
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    padding: 3px 8px;
+    spacing: 5px;
+}
+
+.writing-companion-diff-orig {
+    font-size: 9.5pt;
+    color: #f87171;
+    text-decoration: line-through;
+}
+
+.writing-companion-diff-arrow {
+    font-size: 9pt;
+    color: #9ca3af;
+    font-weight: bold;
+}
+
+.writing-companion-diff-repl {
+    font-size: 9.5pt;
+    color: #4ade80;
     font-weight: 600;
 }
 
+/* No Change Needed Box */
 .writing-companion-no-change-box {
-    background-color: rgba(34, 197, 94, 0.15);
-    border: 1px solid rgba(34, 197, 94, 0.4);
-    border-radius: 8px;
-    padding: 10px 14px;
+    background-color: rgba(34, 197, 94, 0.12);
+    border-left: 4px solid #22c55e;
+    border-radius: 12px;
+    padding: 12px 16px;
+    spacing: 4px;
+}
+
+.writing-companion-no-change-title {
+    font-size: 11pt;
     color: #4ade80;
-    font-weight: 600;
+    font-weight: 700;
+}
+
+.writing-companion-no-change-desc {
+    font-family: 'Vazirmatn', 'Vazirmatn UI', sans-serif;
+    font-size: 10pt;
+    color: #bbf7d0;
 }
 
 .writing-companion-loading {
     font-size: 11pt;
     color: #9ca3af;
-    padding: 12px;
+    padding: 14px;
+    spacing: 8px;
 }
 
 .writing-companion-footer {
     padding-top: 6px;
-    font-size: 9pt;
+    font-size: 9.5pt;
     color: #9ca3af;
+    spacing: 8px;
 }
 
 .writing-companion-key {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-weight: bold;
+    background-color: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.20);
+    border-radius: 5px;
+    padding: 2px 7px;
+    font-weight: 700;
     color: #e5e7eb;
+    font-size: 9pt;
+}
+
+.writing-companion-btn {
+    border-radius: 6px;
+    padding: 1px 4px;
+    transition-duration: 150ms;
+}
+
+.writing-companion-btn:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
 }
 
 /* Toast for empty selection */
 .writing-companion-toast {
-    background-color: rgba(24, 24, 27, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 10px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    padding: 8px 14px;
+    background-color: rgba(24, 24, 27, 0.96);
+    border: 1.5px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    padding: 10px 16px;
     color: #fbbf24;
     font-size: 10.5pt;
-    font-weight: 500;
+    font-weight: 600;
 }

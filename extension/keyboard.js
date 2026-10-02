@@ -22,7 +22,7 @@ export class VirtualKeyboard {
     }
 
     /**
-     * Emit simulated Shift + Insert keystroke.
+     * Emit simulated Ctrl + V keystroke.
      */
     emitPaste() {
         const device = this._getVirtualDevice();
@@ -33,21 +33,21 @@ export class VirtualKeyboard {
 
         const now = Clutter.get_current_event_time();
 
-        // Press Shift_L
-        device.notify_keyval(now, Clutter.KEY_Shift_L, Clutter.KeyState.PRESS);
+        // Press Control_L
+        device.notify_keyval(now, Clutter.KEY_Control_L, Clutter.KeyState.PRESS);
 
         // Small micro-delay for event loop dispatch
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 15, () => {
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 25, () => {
             const t1 = Clutter.get_current_event_time();
-            // Press Insert
-            device.notify_keyval(t1, Clutter.KEY_Insert, Clutter.KeyState.PRESS);
-            // Release Insert
-            device.notify_keyval(t1, Clutter.KEY_Insert, Clutter.KeyState.RELEASE);
+            // Press v
+            device.notify_keyval(t1, Clutter.KEY_v, Clutter.KeyState.PRESS);
+            // Release v
+            device.notify_keyval(t1, Clutter.KEY_v, Clutter.KeyState.RELEASE);
 
-            // Release Shift_L
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 15, () => {
+            // Release Control_L
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 25, () => {
                 const t2 = Clutter.get_current_event_time();
-                device.notify_keyval(t2, Clutter.KEY_Shift_L, Clutter.KeyState.RELEASE);
+                device.notify_keyval(t2, Clutter.KEY_Control_L, Clutter.KeyState.RELEASE);
                 return GLib.SOURCE_REMOVE;
             });
 
