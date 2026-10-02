@@ -17,6 +17,7 @@ export class InPlacePopup {
         this._onDismiss = null;
         this._onDashboard = null;
         this._capturedEventId = 0;
+        this._grab = null;
     }
 
     /**
@@ -146,7 +147,7 @@ export class InPlacePopup {
         // Set initial position
         this._updatePosition();
 
-        // Grab keyboard focus for Enter/Esc/D
+        // Take modal grab so Enter/Esc/D and outside clicks reach the popup
         this._setupEvents();
     }
 
@@ -379,7 +380,10 @@ export class InPlacePopup {
     }
 
     _setupEvents() {
-        this._actor.grab_key_focus();
+        // On Wayland a plain grab_key_focus() cannot pull the keyboard away
+        // from the focused application window; a modal grab is required so
+        // Enter/Esc/D are routed to the shell at all.
+        this._grab = Main.pushModal(this._actor);
 
         this._keyEventId = this._actor.connect('key-press-event', (actor, event) => {
             const symbol = event.get_key_symbol();
@@ -411,23 +415,20 @@ export class InPlacePopup {
             return Clutter.EVENT_PROPAGATE;
         });
 
-        // Dismiss on outside pointer click
-        this._capturedEventId = global.stage.connect('captured-event', (stage, event) => {
-            if (event.type() === Clutter.EventType.BUTTON_PRESS) {
-                const [targetX, targetY] = event.get_coords();
-                const [actorX, actorY] = this._actor.get_transformed_position();
-                const [actorW, actorH] = this._actor.get_transformed_size();
+        // Dismiss on pointer press outside the popup. During the grab every
+        // event is delivered to the grab actor, so listen on the actor and
+        // check the real target (same pattern as Shell's PopupMenuManager).
+        this._capturedEventId = this._actor.connect('captured-event', (actor, event) => {
+            const type = event.type();
+            if (type !== Clutter.EventType.BUTTON_PRESS && type !== Clutter.EventType.TOUCH_BEGIN)
+                return Clutter.EVENT_PROPAGATE;
 
-                if (
-                    targetX < actorX ||
-                    targetX > actorX + actorW ||
-                    targetY < actorY ||
-                    targetY > actorY + actorH
-                ) {
-                    if (this._onDismiss) this._onDismiss();
-                    this.close();
-                }
-            }
+            const targetActor = global.stage.get_event_actor(event);
+            if (targetActor && this._actor.contains(targetActor))
+                return Clutter.EVENT_PROPAGATE;
+
+            if (this._onDismiss) this._onDismiss();
+            this.close();
             return Clutter.EVENT_PROPAGATE;
         });
     }
@@ -436,8 +437,17 @@ export class InPlacePopup {
      * Cleanly remove actor from compositor scene graph.
      */
     close() {
-        if (this._capturedEventId) {
-            global.stage.disconnect(this._capturedEventId);
+        if (this._grab) {
+            try {
+                Main.popModal(this._grab);
+            } catch (e) {
+                console.warn(`[WritingAssistant] popModal failed: ${e}`);
+            }
+            this._grab = null;
+        }
+
+        if (this._capturedEventId && this._actor) {
+            this._actor.disconnect(this._capturedEventId);
             this._capturedEventId = 0;
         }
 
