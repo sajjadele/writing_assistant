@@ -1,9 +1,34 @@
-"""Windows clipboard + cursor helpers (stdlib + ctypes only)."""
+"""Windows clipboard + cursor helpers (stdlib + ctypes only).
+
+Clipboard access reuses ONE long-lived hidden Tk root. Creating a fresh
+``tk.Tk()`` per call spawns a new Tcl interpreter each time, which is both
+wasteful and fatal if it ever happens re-entrantly inside a Win32 modal
+loop (e.g. TrackPopupMenu) — observed as PyEval_RestoreThread crash.
+All functions here must be called from the Tk (main) thread.
+"""
 
 from __future__ import annotations
 
 import ctypes
 from ctypes import wintypes
+
+
+_shared_root = None
+
+
+def _root():
+    """Process-wide hidden root for clipboard ops (created once)."""
+    global _shared_root
+    try:
+        if _shared_root is not None and _shared_root.winfo_exists():
+            return _shared_root
+    except Exception:
+        pass
+    import tkinter as tk
+
+    _shared_root = tk.Tk()
+    _shared_root.withdraw()
+    return _shared_root
 
 
 def get_cursor_pos() -> tuple[int, int]:
@@ -18,37 +43,24 @@ def get_cursor_pos() -> tuple[int, int]:
 
 
 def get_clipboard_text() -> str:
-    """Read text clipboard via tkinter (no extra dependency)."""
+    """Read text clipboard via the shared hidden root (main thread only)."""
     try:
-        import tkinter as tk
-    except Exception:
-        return ""
-    try:
-        root = tk.Tk()
-        root.withdraw()
+        root = _root()
         try:
-            text = root.clipboard_get()
+            return root.clipboard_get().strip()
         except Exception:
-            text = ""
-        root.destroy()
-        return text.strip()
+            return ""
     except Exception:
         return ""
 
 
 def set_clipboard_text(text: str) -> bool:
-    """Write text to the Windows clipboard via tkinter."""
+    """Write text to the Windows clipboard via the shared hidden root."""
     try:
-        import tkinter as tk
-    except Exception:
-        return False
-    try:
-        root = tk.Tk()
-        root.withdraw()
+        root = _root()
         root.clipboard_clear()
         root.clipboard_append(text)
         root.update()
-        root.destroy()
         return True
     except Exception:
         return False
