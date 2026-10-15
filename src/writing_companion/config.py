@@ -64,23 +64,35 @@ def save_user_settings(data: dict) -> None:
         json.dump(existing, f, indent=2, ensure_ascii=False)
 
 
+def _env_candidates() -> list:
+    """Locate .env regardless of the process working directory.
+
+    Task Scheduler / autostart may launch the daemon with an arbitrary CWD,
+    so besides ./env we also look next to the project root (parent of src/).
+    """
+    here = Path(__file__).resolve()
+    project_root = here.parents[2] if len(here.parents) >= 3 else Path.cwd()
+    return [Path.cwd() / ".env", project_root / ".env"]
+
+
 def load_settings() -> Settings:
     """Load settings with priority: settings.json > environment variables > .env > defaults."""
     # 1. Read .env file if available
-    env_file = Path(".env")
-    if env_file.is_file():
-        try:
-            with open(env_file, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        k, v = line.split("=", 1)
-                        k = k.strip()
-                        v = v.strip().strip("'").strip('"')
-                        if k not in os.environ:
-                            os.environ[k] = v
-        except Exception:
-            pass
+    for env_file in _env_candidates():
+        if env_file.is_file():
+            try:
+                with open(env_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            k, v = line.split("=", 1)
+                            k = k.strip()
+                            v = v.strip().strip("'").strip('"')
+                            if k not in os.environ:
+                                os.environ[k] = v
+                break
+            except Exception:
+                pass
 
     # 2. Read user settings.json
     user_conf = {}
