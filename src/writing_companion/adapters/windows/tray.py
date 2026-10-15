@@ -46,8 +46,7 @@ ID_SETTINGS = 103
 ID_QUIT = 104
 
 
-class NOTIFYICONDATA(ctypes.Structure):
-    _fields_ = [
+class NOTIFYICONDATA(ctypes.Structure):    _fields_ = [
         ("cbSize", wintypes.DWORD),
         ("hWnd", wintypes.HWND),
         ("uID", wintypes.UINT),
@@ -67,8 +66,62 @@ class NOTIFYICONDATA(ctypes.Structure):
 
 
 WNDPROC = ctypes.WINFUNCTYPE(
-    ctypes.c_long, wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM
+    ctypes.c_ssize_t, wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM
 )
+
+
+def _bind_win32() -> None:
+    """Declare exact Win32 signatures (64-bit safe; no c_int truncation)."""
+    user32.DefWindowProcW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+    user32.DefWindowProcW.restype = ctypes.c_ssize_t
+    user32.RegisterClassW.argtypes = [ctypes.POINTER(WNDCLASSW)]
+    user32.RegisterClassW.restype = wintypes.WORD
+    user32.CreateWindowExW.argtypes = [
+        wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD,
+        ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+        wintypes.HWND, wintypes.HMENU, wintypes.HINSTANCE, wintypes.LPVOID,
+    ]
+    user32.CreateWindowExW.restype = wintypes.HWND
+    user32.LoadIconW.argtypes = [wintypes.HINSTANCE, wintypes.LPCWSTR]
+    user32.LoadIconW.restype = wintypes.HICON
+    shell32.Shell_NotifyIconW.argtypes = [wintypes.DWORD, ctypes.POINTER(NOTIFYICONDATA)]
+    shell32.Shell_NotifyIconW.restype = wintypes.BOOL
+    user32.CreatePopupMenu.restype = wintypes.HMENU
+    user32.AppendMenuW.argtypes = [wintypes.HMENU, wintypes.UINT, ctypes.c_size_t, wintypes.LPCWSTR]
+    user32.AppendMenuW.restype = wintypes.BOOL
+    user32.TrackPopupMenu.argtypes = [
+        wintypes.HMENU, wintypes.UINT, ctypes.c_int, ctypes.c_int,
+        ctypes.c_int, wintypes.HWND, wintypes.LPVOID,
+    ]
+    user32.TrackPopupMenu.restype = wintypes.BOOL
+    user32.GetCursorPos.argtypes = [ctypes.POINTER(wintypes.POINT)]
+    user32.GetCursorPos.restype = wintypes.BOOL
+    user32.SetForegroundWindow.argtypes = [wintypes.HWND]
+    user32.SetForegroundWindow.restype = wintypes.BOOL
+    user32.DestroyMenu.argtypes = [wintypes.HMENU]
+    user32.DestroyMenu.restype = wintypes.BOOL
+    user32.DestroyWindow.argtypes = [wintypes.HWND]
+    user32.DestroyWindow.restype = wintypes.BOOL
+
+
+class WNDCLASSW(ctypes.Structure):
+    """Win32 window class (ctypes.wintypes does not provide it)."""
+
+    _fields_ = [
+        ("style", wintypes.UINT),
+        ("lpfnWndProc", WNDPROC),
+        ("cbClsExtra", ctypes.c_int),
+        ("cbWndExtra", ctypes.c_int),
+        ("hInstance", wintypes.HINSTANCE),
+        ("hIcon", wintypes.HICON),
+        ("hCursor", wintypes.HCURSOR),
+        ("hbrBackground", wintypes.HBRUSH),
+        ("lpszMenuName", wintypes.LPCWSTR),
+        ("lpszClassName", wintypes.LPCWSTR),
+    ]
+
+
+_bind_win32()  # after WNDCLASSW/NOTIFYICONDATA exist
 
 
 class WinTray:
@@ -126,7 +179,7 @@ class WinTray:
     def _create_window(self) -> None:
         hinst = kernel32.GetModuleHandleW(None)
         cls_name = "WritingAssistantTray"
-        wc = wintypes.WNDCLASSW()
+        wc = WNDCLASSW()
         wc.lpfnWndProc = WNDPROC(self._wndproc)
         self._wndproc_ref = wc.lpfnWndProc  # prevent GC of the callback
         wc.lpszClassName = cls_name
@@ -140,7 +193,8 @@ class WinTray:
 
     # -- icon ------------------------------------------------------------
     def _add_icon(self) -> None:
-        hicon = user32.LoadIconW(None, IDI_APPLICATION)
+        # MAKEINTRESOURCE: stock icon id passed as a pseudo-pointer.
+        hicon = user32.LoadIconW(None, ctypes.cast(IDI_APPLICATION, wintypes.LPCWSTR))
         nid = NOTIFYICONDATA()
         nid.cbSize = ctypes.sizeof(NOTIFYICONDATA)
         nid.hWnd = self._hwnd
