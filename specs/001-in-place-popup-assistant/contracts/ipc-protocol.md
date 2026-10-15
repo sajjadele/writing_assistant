@@ -125,7 +125,7 @@ Returned on API error, network failure, or parse failure:
 
 Standard Error Codes:
 - `EMPTY_INPUT`: No text provided to process.
-- `TIMEOUT`: LLM provider did not answer within 7000ms (unified `Settings.timeout_ms`).
+- `TIMEOUT`: LLM provider did not answer within the cap (unified `Settings.timeout_ms`, default 30000ms — calibrated 2026-10-15: Gemini needs 8-15s for real texts).
 - `RATE_LIMIT_EXCEEDED`: API quota reached.
 - `PROVIDER_UNAVAILABLE`: Network offline and local Ollama unreachable.
 - `PARSE_ERROR`: Provider output did not conform to JSON contract.
@@ -133,6 +133,7 @@ Standard Error Codes:
 ---
 
 ## 5. Timing & Timeout Contract
-- **Single source of truth**: `Settings.timeout_ms` (default 7000ms).
+- **Single source of truth**: `Settings.timeout_ms` (default 30000ms).
 - All providers (Groq/Gemini/Ollama) and the extension subprocess watchdog use this value.
+- The Windows `ipc_client` adds +10s headroom for interpreter startup.
 - If the Python subprocess exceeds `timeout_ms`, the extension aborts the process (`Gio.Subprocess.force_exit()`), shows a transient warning indicator, and gracefully dismisses.

@@ -11,6 +11,67 @@ from __future__ import annotations
 from typing import Callable
 
 
+def register_ctrl_alt_g(callback: Callable[[], None]):
+    """Register Ctrl+Alt+G non-blocking; return a cleanup callable.
+
+    Prefers ``keyboard`` (needs no thread of its own), falls back to a
+    background ``pynput`` listener. Raises RuntimeError if neither exists.
+    """
+    try:
+        import keyboard  # type: ignore
+
+        handle = keyboard.add_hotkey("ctrl+alt+g", callback)
+
+        def _cleanup() -> None:
+            try:
+                keyboard.remove_hotkey(handle)
+            except Exception:
+                pass
+
+        return _cleanup
+    except ImportError:
+        pass
+    except Exception as e:
+        raise RuntimeError(f"keyboard backend failed: {e}") from e
+
+    try:
+        from pynput import keyboard as pk  # type: ignore
+
+        pressed: set = set()
+
+        def on_press(key):
+            try:
+                if key in (pk.Key.ctrl_l, pk.Key.ctrl_r):
+                    pressed.add("ctrl")
+                elif key in (pk.Key.alt_l, pk.Key.alt_r):
+                    pressed.add("alt")
+                elif getattr(key, "char", "") == "g":
+                    if pressed == {"ctrl", "alt"}:
+                        callback()
+            except Exception:
+                pass
+
+        def on_release(key):
+            try:
+                if key in (pk.Key.ctrl_l, pk.Key.ctrl_r):
+                    pressed.discard("ctrl")
+                elif key in (pk.Key.alt_l, pk.Key.alt_r):
+                    pressed.discard("alt")
+            except Exception:
+                pass
+
+        listener = pk.Listener(on_press=on_press, on_release=on_release)
+        listener.start()
+        return listener.stop
+    except ImportError:
+        pass
+
+    raise RuntimeError(
+        "No global-hotkey backend found. Install one with: pip install keyboard   (recommended) "
+        "or: pip install pynput"
+    )
+
+
 def listen_ctrl_alt_g(callback: Callable[[], None]) -> None:
     """Block forever, invoking callback on each Ctrl+Alt+G press."""
     # Option 1: `keyboard` package (simplest, no extra thread needed).

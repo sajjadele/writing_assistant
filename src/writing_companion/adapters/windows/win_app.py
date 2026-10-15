@@ -20,6 +20,20 @@ from writing_companion.adapters.windows.clipboard_win import (
 from writing_companion.adapters.windows.paste import emit_paste
 
 
+def _friendly_error(exc: Exception) -> str:
+    """Map raw IPC/subprocess failures to a Persian user-facing message."""
+    import subprocess as _sp
+
+    if isinstance(exc, _sp.TimeoutExpired):
+        return "⏳ پاسخ مدل طول کشید و زمان تمام شد. لطفاً با متن کوتاه‌تر دوباره تلاش کنید."
+    msg = str(exc)
+    if "timed out" in msg.lower():
+        return "⏳ پاسخ مدل طول کشید و زمان تمام شد. لطفاً دوباره تلاش کنید."
+    if "Proxy" in msg or "proxy" in msg or "ConnectError" in msg:
+        return "🌐 اتصال به سرویس هوش مصنوعی برقرار نشد. اینترنت/VPN را بررسی کنید."
+    return f"⚠️ خطا در پردازش متن: {msg[:200]}"
+
+
 def process_once(text: str, preferred_backend: str = "auto") -> dict:
     """Run one correction through the core and return the raw IPC response."""
     settings = load_settings()
@@ -27,50 +41,82 @@ def process_once(text: str, preferred_backend: str = "auto") -> dict:
     return ipc_client.correct_text(text, preferred_backend, timeout_s)
 
 
-def show_popup_for_text(text: str, preferred_backend: str = "auto") -> None:
-    """Full interactive flow with the Tkinter popup (Windows only)."""
+def show_popup_for_text(text: str, preferred_backend: str = "auto", master=None) -> None:
+    """Full interactive flow with the Tkinter popup (Windows only).
+
+    The popup appears instantly in loading state; the core IPC runs in a
+    background thread and fills the fields when the result arrives.
+    All tkinter calls stay on the calling (UI) thread.
+    """
+    import threading
+
     from writing_companion.adapters.windows.popup_win import WinPopup
 
     settings = load_settings()
     timeout_s = settings.timeout_ms / 1000.0
     cursor_x, cursor_y = get_cursor_pos()
 
-    popup = WinPopup(cursor_x, cursor_y)
-    try:
-        res = ipc_client.correct_text(text, preferred_backend, timeout_s)
-    except Exception as e:
-        popup.show_error(str(e))
-        popup.run_modal(on_accept=lambda: None, on_dismiss=lambda: None)
-        return
+    popup = WinPopup(cursor_x, cursor_y, master=master)
+    popup.start_spinner()
 
-    if res.get("status") != "success":
-        popup.show_error(res.get("error", {}).get("message", "Error processing text"))
-        popup.run_modal(on_accept=lambda: None, on_dismiss=lambda: None)
-        return
+    state: dict = {}
+    holder: dict = {}
 
-    data = res["data"]
-    meta = res.get("metadata", {})
-    event_id = meta.get("event_id")
-    backend = meta.get("backend_used", "AI")
-    duration = meta.get("duration_ms", 0)
-    badge = f"{backend} • {duration}ms"
+    def worker() -> None:
+        try:
+            state["res"] = ipc_client.correct_text(text, preferred_backend, timeout_s)
+        except Exception as e:  # noqa: BLE001 - surfaced as friendly card
+            state["err"] = e
 
-    if data.get("is_correct"):
-        popup.show_no_change(badge)
-    else:
-        popup.show_result(
-            meaning_fa=data.get("interpreted_meaning_fa", ""),
-            corrected=data.get("corrected_text", ""),
-            changes=data.get("changes", []),
-            badge=badge,
-        )
-
-    corrected = data.get("corrected_text", text)
+    def render() -> None:
+        """Main-thread render of the worker result (or re-poll)."""
+        if getattr(popup, "_closed", True):
+            return
+        if "res" not in state and "err" not in state:
+            try:
+                popup.root.after(250, render)
+            except Exception:
+                pass
+            return
+        if "err" in state:
+            popup.show_error(_friendly_error(state["err"]))
+            return
+        res = state["res"]
+        if res.get("status") != "success":
+            popup.show_error(res.get("error", {}).get("message", "Error processing text"))
+            return
+        data = res["data"]
+        meta = res.get("metadata", {})
+        holder["data"] = data
+        holder["event_id"] = meta.get("event_id")
+        backend = meta.get("backend_used", "AI")
+        duration = meta.get("duration_ms", 0)
+        badge = f"{backend} • {duration}ms"
+        if data.get("is_correct"):
+            popup.show_no_change(badge)
+        else:
+            popup.show_result(
+                meaning_fa=data.get("interpreted_meaning_fa", ""),
+                corrected=data.get("corrected_text", ""),
+                changes=data.get("changes", []),
+                badge=badge,
+            )
 
     def accept() -> None:
+        data = holder.get("data")
+        if data is None:
+            return  # still loading; popup queues it via _pending_accept
+        print("[win] accepted -> clipboard + Shift+Insert", file=sys.stderr)
         if not data.get("is_correct"):
-            set_clipboard_text(corrected)
-            emit_paste()
+            set_clipboard_text(data.get("corrected_text", text))
+            # Let focus return to the target app before pasting,
+            # otherwise Shift+Insert lands nowhere.
+            import time as _time
+
+            _time.sleep(0.25)
+            if not emit_paste():
+                print("[win] paste failed: virtual keystroke rejected", file=sys.stderr)
+        event_id = holder.get("event_id")
         if event_id:
             try:
                 ipc_client.log_feedback(event_id, True, timeout_s)
@@ -78,6 +124,8 @@ def show_popup_for_text(text: str, preferred_backend: str = "auto") -> None:
                 pass
 
     def dismiss() -> None:
+        print("[win] dismissed", file=sys.stderr)
+        event_id = holder.get("event_id")
         if event_id:
             try:
                 ipc_client.log_feedback(event_id, False, timeout_s)
@@ -85,37 +133,78 @@ def show_popup_for_text(text: str, preferred_backend: str = "auto") -> None:
                 pass
 
     def copy_only() -> None:
-        set_clipboard_text(corrected)
+        data = holder.get("data")
+        if data is None:
+            return
+        print("[win] copy-only -> clipboard", file=sys.stderr)
+        set_clipboard_text(data.get("corrected_text", text))
+        event_id = holder.get("event_id")
         if event_id:
             try:
                 ipc_client.log_feedback(event_id, True, timeout_s)
             except Exception:
                 pass
 
+    threading.Thread(target=worker, daemon=True).start()
+    try:
+        popup.root.after(250, render)
+    except Exception:
+        pass
     popup.run_modal(on_accept=accept, on_dismiss=dismiss, on_copy=copy_only)
 
 
 def run_daemon(preferred_backend: str = "auto") -> int:
-    """Listen for Ctrl+Alt+G and process the clipboard text each time."""
-    from writing_companion.adapters.windows.hotkey import listen_ctrl_alt_g
+    """Listen for Ctrl+Alt+G and process the clipboard text each time.
 
-    print("Writing Assistant (Windows) listening on Ctrl+Alt+G. Press Ctrl+C to stop.")
-
-    def on_hotkey() -> None:
-        text = get_clipboard_text()
-        if not text:
-            print("Clipboard is empty: copy/select text first.")
-            return
-        try:
-            show_popup_for_text(text, preferred_backend)
-        except Exception as e:
-            print(f"Error: {e}", file=sys.stderr)
+    The hidden Tk root lives in the main thread; hotkey callbacks only
+    enqueue activations (tkinter is not thread-safe).
+    """
+    import queue
+    import tkinter as tk
 
     try:
-        listen_ctrl_alt_g(on_hotkey)
+        from writing_companion.adapters.windows.hotkey import register_ctrl_alt_g
+    except Exception as e:
+        print(f"Hotkey backend unavailable: {e}", file=sys.stderr)
+        return 1
+
+    activations: queue.Queue = queue.Queue()
+    root = tk.Tk()
+    root.withdraw()
+
+    def poll() -> None:
+        while True:
+            try:
+                activations.get_nowait()
+            except queue.Empty:
+                break
+            text = get_clipboard_text()
+            if not text:
+                print("Clipboard is empty: copy/select text first.")
+                continue
+            try:
+                show_popup_for_text(text, preferred_backend, master=root)
+            except Exception as e:
+                print(f"Error: {e}", file=sys.stderr)
+        root.after(200, poll)
+
+    try:
+        cleanup = register_ctrl_alt_g(lambda: activations.put("go"))
     except RuntimeError as e:
         print(str(e), file=sys.stderr)
         return 1
+
+    print("Writing Assistant (Windows) listening on Ctrl+Alt+G. Press Ctrl+C to stop.")
+    root.after(200, poll)
+    try:
+        root.mainloop()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        try:
+            cleanup()
+        except Exception:
+            pass
     return 0
 
 
@@ -125,6 +214,8 @@ def main(argv: list | None = None) -> int:
     parser.add_argument("--popup", action="store_true", help="Process one --text with the Tkinter popup")
     parser.add_argument("--daemon", action="store_true", help="Listen for Ctrl+Alt+G globally")
     parser.add_argument("--text", type=str, default="", help="Input text for --once/--popup")
+    parser.add_argument("--from-clipboard", action="store_true", help="Wait for clipboard text then show popup")
+    parser.add_argument("--wait", type=int, default=60, help="Seconds to wait for clipboard (default 60)")
     parser.add_argument("--backend", type=str, default="auto", help="Preferred backend")
     args = parser.parse_args(argv)
 
@@ -146,6 +237,20 @@ def main(argv: list | None = None) -> int:
             print("Empty --text", file=sys.stderr)
             return 2
         show_popup_for_text(args.text.strip(), args.backend)
+        return 0
+    if args.from_clipboard:
+        import time as _time
+
+        text = get_clipboard_text()
+        for _ in range(max(1, args.wait)):
+            if text:
+                break
+            _time.sleep(1)
+            text = get_clipboard_text()
+        if not text:
+            print("Clipboard is empty: copy/select text first.", file=sys.stderr)
+            return 2
+        show_popup_for_text(text, args.backend)
         return 0
     if args.daemon:
         return run_daemon(args.backend)

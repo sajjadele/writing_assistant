@@ -13,7 +13,7 @@ import sys
 from typing import Any
 
 
-def run_ipc(payload: dict[str, Any], timeout_s: float = 7.0) -> dict[str, Any]:
+def run_ipc(payload: dict[str, Any], timeout_s: float = 30.0) -> dict[str, Any]:
     """Send one JSON request on stdin, parse one JSON response from stdout."""
     proc = subprocess.run(
         [sys.executable, "-m", "writing_companion.cli", "--ipc"],
@@ -21,16 +21,18 @@ def run_ipc(payload: dict[str, Any], timeout_s: float = 7.0) -> dict[str, Any]:
         capture_output=True,
         text=True,
         encoding="utf-8",
-        timeout=timeout_s + 2.0,
+        # Generous margin over the provider cap: interpreter startup +
+        # engine overhead also consume wall-clock inside the subprocess.
+        timeout=timeout_s + 10.0,
     )
     if proc.returncode != 0:
         raise RuntimeError(f"Core IPC exited {proc.returncode}: {proc.stderr.strip()[:500]}")
     return json.loads(proc.stdout.strip())
 
 
-def correct_text(text: str, preferred_backend: str = "auto", timeout_s: float = 7.0) -> dict[str, Any]:
+def correct_text(text: str, preferred_backend: str = "auto", timeout_s: float = 30.0) -> dict[str, Any]:
     return run_ipc({"action": "correct", "text": text, "preferred_backend": preferred_backend}, timeout_s)
 
 
-def log_feedback(event_id: int, accepted: bool, timeout_s: float = 7.0) -> dict[str, Any]:
+def log_feedback(event_id: int, accepted: bool, timeout_s: float = 30.0) -> dict[str, Any]:
     return run_ipc({"action": "log_feedback", "event_id": event_id, "accepted": accepted}, timeout_s)

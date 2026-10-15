@@ -226,12 +226,12 @@ export default class WritingAssistantExtension extends Extension {
             const jsonInput = JSON.stringify(payload);
             let isTimedOut = false;
 
-            const timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 7000, () => {
+            const timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 30000, () => {
                 isTimedOut = true;
                 try {
                     proc.force_exit();
                 } catch (e) {}
-                if (callback) callback(new Error('Process timed out after 7000ms.'));
+                if (callback) callback(new Error('Process timed out after 30000ms.'));
                 return GLib.SOURCE_REMOVE;
             });
 

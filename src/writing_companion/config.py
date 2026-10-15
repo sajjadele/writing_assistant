@@ -41,8 +41,11 @@ class Settings:
     ollama_host: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
     
-    # Timeout
-    timeout_ms: int = 7000
+    # Timeout (unified cap for all providers + IPC watchdog, ms).
+    # Calibrated 2026-10-15: Gemini real-world latency is 8-15s for normal
+    # texts (7.8s measured for one short sentence), so 7s strangled it.
+    # A cap does not slow fast providers (Groq ~300ms); it only bounds worst case.
+    timeout_ms: int = 30000
 
 
 def save_user_settings(data: dict) -> None:
@@ -141,5 +144,5 @@ def load_settings() -> Settings:
         gemini_model=gemini_model,
         ollama_host=ollama_host,
         ollama_model=ollama_model,
-        timeout_ms=int(user_conf.get("timeout_ms") or os.getenv("TIMEOUT_MS", "7000")),
+        timeout_ms=int(user_conf.get("timeout_ms") or os.getenv("TIMEOUT_MS", "30000")),
     )
