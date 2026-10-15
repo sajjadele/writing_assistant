@@ -125,26 +125,34 @@ _bind_win32()  # after WNDCLASSW/NOTIFYICONDATA exist
 
 
 class WinTray:
-    """Resident tray icon. Call pump-independent methods from Tk thread."""
+    """Resident tray icon. Call pump-independent methods from Tk thread.
+
+    The native menu callback NEVER runs application code directly: it only
+    enqueues an action string ("toggle"|"history"|"settings"|"quit") into
+    ``sink`` and returns immediately. The host Tk loop drains the sink on
+    the main thread. Running Tk calls nested inside the Win32 callback
+    stack (TrackPopupMenu modal loop) corrupted the GIL and killed the
+    process with PyEval_RestoreThread (observed Oct 2026).
+    """
 
     def __init__(
         self,
-        on_toggle,
-        on_history,
-        on_settings,
-        on_quit,
+        sink,
         is_running: Callable[[], bool],
     ) -> None:
-        self._on_toggle = on_toggle
-        self._on_history = on_history
-        self._on_settings = on_settings
-        self._on_quit = on_quit
+        self._sink = sink
         self._is_running = is_running
         self._hwnd = None
         self._nid = None
         self._wndproc_ref = None  # keep alive: Windows calls into it
         self._create_window()
         self._add_icon()
+
+    def _emit(self, action: str) -> None:
+        try:
+            self._sink(action)
+        except Exception:
+            pass
 
     # -- window ----------------------------------------------------------
     def _wndproc(self, hwnd, msg, wparam, lparam):
@@ -153,24 +161,18 @@ class WinTray:
             if event == WM_RBUTTONUP:
                 self._show_menu()
             elif event == WM_LBUTTONDBLCLK:
-                try:
-                    self._on_history()
-                except Exception:
-                    pass
+                self._emit("history")
             return 0
         if msg == WM_COMMAND:
             cmd = wparam & 0xFFFF
-            try:
-                if cmd == ID_TOGGLE:
-                    self._on_toggle()
-                elif cmd == ID_HISTORY:
-                    self._on_history()
-                elif cmd == ID_SETTINGS:
-                    self._on_settings()
-                elif cmd == ID_QUIT:
-                    self._on_quit()
-            except Exception:
-                pass
+            if cmd == ID_TOGGLE:
+                self._emit("toggle")
+            elif cmd == ID_HISTORY:
+                self._emit("history")
+            elif cmd == ID_SETTINGS:
+                self._emit("settings")
+            elif cmd == ID_QUIT:
+                self._emit("quit")
             return 0
         if msg == WM_DESTROY:
             return 0

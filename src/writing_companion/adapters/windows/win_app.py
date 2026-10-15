@@ -194,7 +194,7 @@ def run_daemon(preferred_backend: str = "auto") -> int:
     return 0
 
 
-def _make_poll(root, activations, preferred_backend):
+def _make_poll(root, activations, preferred_backend, extra=None):
     """Shared activation consumer: clipboard -> popup (main thread only)."""
     import queue as _queue
 
@@ -212,6 +212,11 @@ def _make_poll(root, activations, preferred_backend):
                 show_popup_for_text(text, preferred_backend, master=root)
             except Exception as e:
                 print(f"Error: {e}", file=sys.stderr)
+        if extra is not None:
+            try:
+                extra()
+            except Exception:
+                pass
         root.after(200, poll)
 
     return poll
@@ -240,10 +245,30 @@ def run_tray(preferred_backend: str = "auto") -> int:
         print(f"Tray UI unavailable: {e}", file=sys.stderr)
         return 1
 
+    def drain_tray_actions() -> None:
+        """Run menu actions requested by the native tray callback (main thread)."""
+        while True:
+            try:
+                action = tray_actions.get_nowait()
+            except queue.Empty:
+                break
+            try:
+                if action == "toggle":
+                    toggle()
+                elif action == "history":
+                    HistoryWindow.open(root)
+                elif action == "settings":
+                    SettingsWindow.open(root)
+                elif action == "quit":
+                    do_quit()
+            except Exception as e:
+                print(f"Tray action failed: {e}", file=sys.stderr)
+
     activations: queue.Queue = queue.Queue()
+    tray_actions: queue.Queue = queue.Queue()
     root = tk.Tk()
     root.withdraw()
-    poll = _make_poll(root, activations, preferred_backend)
+    poll = _make_poll(root, activations, preferred_backend, extra=drain_tray_actions)
 
     state = {"cleanup": None, "tray": None}
 
@@ -295,10 +320,7 @@ def run_tray(preferred_backend: str = "auto") -> int:
 
     try:
         state["tray"] = WinTray(
-            on_toggle=toggle,
-            on_history=lambda: HistoryWindow.open(root),
-            on_settings=lambda: SettingsWindow.open(root),
-            on_quit=do_quit,
+            sink=tray_actions.put_nowait,
             is_running=is_running,
         )
     except Exception as e:
@@ -317,6 +339,12 @@ def run_tray(preferred_backend: str = "auto") -> int:
 
 
 def main(argv: list | None = None) -> int:
+    import faulthandler
+
+    try:
+        faulthandler.enable()  # Python-level traceback on any future fatal crash
+    except Exception:
+        pass
     parser = argparse.ArgumentParser(description="Writing Assistant Windows adapter (Tkinter)")
     parser.add_argument("--once", action="store_true", help="Process one --text and print IPC JSON (no GUI)")
     parser.add_argument("--popup", action="store_true", help="Process one --text with the Tkinter popup")
