@@ -10,9 +10,10 @@ from writing_companion.core.prompt import SYSTEM_PROMPT
 class OllamaProvider(BaseProvider):
     """Ollama local server provider using Ollama's native REST API with JSON mode."""
 
-    def __init__(self, host: str = "http://localhost:11434", model: str = "llama3.2"):
+    def __init__(self, host: str = "http://localhost:11434", model: str = "llama3.2", timeout: float = 7.0):
         self.host = host.rstrip("/")
         self.model = model
+        self.timeout = timeout
         self.chat_url = f"{self.host}/api/chat"
         self.tags_url = f"{self.host}/api/tags"
 
@@ -43,7 +44,7 @@ class OllamaProvider(BaseProvider):
             },
         }
 
-        async with httpx.AsyncClient(timeout=8.0) as client:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.post(self.chat_url, json=payload)
             resp.raise_for_status()
             data = resp.json()

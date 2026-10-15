@@ -14,6 +14,7 @@ def run_cli_ipc(payload: str) -> dict:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        encoding="utf-8",
     )
     stdout, stderr = proc.communicate(input=payload)
     assert proc.returncode == 0, f"CLI exited with {proc.returncode}, stderr: {stderr}"

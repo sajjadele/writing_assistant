@@ -17,40 +17,62 @@ def build_engine() -> Engine:
     settings = load_settings()
     store = SQLiteStore(settings.db_path)
     engine = Engine(settings, store)
-    
+    timeout_s = settings.timeout_ms / 1000.0
+
     # Conditionally register cloud/local providers if configured
     try:
         from writing_companion.providers.groq_provider import GroqProvider
         if settings.groq_api_key:
-            engine.register_provider(GroqProvider(settings.groq_api_key, settings.groq_model))
+            engine.register_provider(GroqProvider(settings.groq_api_key, settings.groq_model, timeout_s))
     except ImportError:
         pass
 
     try:
         from writing_companion.providers.gemini_provider import GeminiProvider
         if settings.gemini_api_key:
-            engine.register_provider(GeminiProvider(settings.gemini_api_key, settings.gemini_model, settings.proxy))
+            engine.register_provider(GeminiProvider(settings.gemini_api_key, settings.gemini_model, settings.proxy, timeout_s))
     except ImportError:
         pass
 
     try:
         from writing_companion.providers.ollama_provider import OllamaProvider
-        engine.register_provider(OllamaProvider(settings.ollama_host, settings.ollama_model))
+        engine.register_provider(OllamaProvider(settings.ollama_host, settings.ollama_model, timeout_s))
     except ImportError:
         pass
 
     return engine
 
 
+def _emit_ipc(resp: IPCResponse) -> None:
+    """Write one JSON line to stdout as UTF-8 bytes.
+
+    Windows consoles default to cp1252; plain print() of Persian text
+    raises "'charmap' codec can't encode". Writing bytes avoids it and
+    keeps the IPC protocol byte-compatible on every OS.
+    """
+    payload = resp.model_dump_json(by_alias=True).encode("utf-8") + b"\n"
+    try:
+        sys.stdout.buffer.write(payload)
+        sys.stdout.buffer.flush()
+    except Exception:
+        # Fallback for captured/redirected streams without .buffer
+        sys.stdout.write(resp.model_dump_json(by_alias=True) + "\n")
+        sys.stdout.flush()
+
+
 async def handle_ipc() -> None:
     """Read single JSON request from stdin and write JSON response to stdout."""
+    try:
+        sys.stdin.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
     raw_input = sys.stdin.read().strip()
     if not raw_input:
         resp = IPCResponse(
             status="error",
             error=IPCError(code="EMPTY_INPUT", message="Standard input was empty."),
         )
-        print(resp.model_dump_json(by_alias=True))
+        _emit_ipc(resp)
         return
 
     try:
@@ -61,7 +83,7 @@ async def handle_ipc() -> None:
             status="error",
             error=IPCError(code="PARSE_ERROR", message=f"Invalid JSON payload: {e}"),
         )
-        print(resp.model_dump_json(by_alias=True))
+        _emit_ipc(resp)
         return
 
     engine = build_engine()
@@ -72,7 +94,7 @@ async def handle_ipc() -> None:
                 status="error",
                 error=IPCError(code="EMPTY_INPUT", message="Text field is required for correction."),
             )
-            print(resp.model_dump_json(by_alias=True))
+            _emit_ipc(resp)
             return
 
         try:
@@ -89,13 +111,13 @@ async def handle_ipc() -> None:
                     "duration_ms": duration_ms,
                 },
             )
-            print(resp.model_dump_json(by_alias=True))
+            _emit_ipc(resp)
         except Exception as e:
             resp = IPCResponse(
                 status="error",
                 error=IPCError(code="EXECUTION_ERROR", message=str(e)),
             )
-            print(resp.model_dump_json(by_alias=True))
+            _emit_ipc(resp)
 
     elif req.action == "log_feedback":
         if req.event_id is None or req.accepted is None:
@@ -106,7 +128,7 @@ async def handle_ipc() -> None:
                     message="event_id and accepted boolean are required.",
                 ),
             )
-            print(resp.model_dump_json(by_alias=True))
+            _emit_ipc(resp)
             return
 
         success = engine.update_feedback(event_id=req.event_id, accepted=req.accepted)
@@ -114,11 +136,15 @@ async def handle_ipc() -> None:
             status="success" if success else "error",
             metadata={"event_id": req.event_id, "accepted": req.accepted, "updated": success},
         )
-        print(resp.model_dump_json(by_alias=True))
+        _emit_ipc(resp)
 
 
 def main() -> None:
     """CLI entrypoint."""
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
     parser = argparse.ArgumentParser(description="Writing Companion CLI & IPC service")
     parser.add_argument("--ipc", action="store_true", help="Run in JSON standard stream IPC mode")
     parser.add_argument("--dashboard", action="store_true", help="Launch Libadwaita desktop dashboard and settings GUI")

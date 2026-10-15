@@ -5,20 +5,34 @@ import json
 import asyncio
 from typing import Optional
 
-import gi
-gi.require_version("Gtk", "4.0")
-gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw, GLib, Pango
+try:
+    import gi
+    gi.require_version("Gtk", "4.0")
+    gi.require_version("Adw", "1")
+    from gi.repository import Gtk, Adw, GLib, Pango
+    DASHBOARD_GTK_AVAILABLE = True
+except Exception:  # pragma: no cover - Windows / no GTK runtime
+    Gtk = Adw = GLib = Pango = None  # type: ignore[assignment]
+    DASHBOARD_GTK_AVAILABLE = False
+
+
+def _require_dashboard_gtk() -> None:
+    if not DASHBOARD_GTK_AVAILABLE:
+        raise RuntimeError("GTK4 runtime not available; Dashboard is Linux-only.")
+
+
+_DASHBOARD_BASE = Adw.ApplicationWindow if DASHBOARD_GTK_AVAILABLE else object
 
 from writing_companion.config import load_settings, save_user_settings
 from writing_companion.storage.sqlite_store import SQLiteStore
 from writing_companion.cli import build_engine
 
 
-class DashboardWindow(Adw.ApplicationWindow):
+class DashboardWindow(_DASHBOARD_BASE):
     """Main desktop application window for Writing Assistant."""
 
     def __init__(self, app):
+        _require_dashboard_gtk()
         super().__init__(application=app, title="Writing Assistant — Dashboard")
         self.set_default_size(860, 640)
 
@@ -282,8 +296,9 @@ class DashboardWindow(Adw.ApplicationWindow):
             self.history_list.append(card)
 
 
-class DashboardApp(Adw.Application):
+class DashboardApp(Adw.Application if DASHBOARD_GTK_AVAILABLE else object):
     def __init__(self):
+        _require_dashboard_gtk()
         super().__init__(application_id="com.github.sajjadele.writing-assistant")
 
     def do_activate(self):
@@ -292,7 +307,8 @@ class DashboardApp(Adw.Application):
 
 
 def run_dashboard():
-    """Launch GTK4 / Libadwaita dashboard application."""
+    """Launch GTK4 / Libadwaita dashboard application (Linux only)."""
+    _require_dashboard_gtk()
     app = DashboardApp()
     return app.run(sys.argv[:1])
 

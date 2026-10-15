@@ -182,16 +182,26 @@ export default class WritingAssistantExtension extends Extension {
     }
 
     _getPythonExecutable() {
-        const home = GLib.get_home_dir();
+        // 1. Explicit override for custom installs / Windows dev machines
+        const override = GLib.getenv('WRITING_COMPANION_PYTHON');
+        if (override && GLib.file_test(override, GLib.FileTest.IS_EXECUTABLE)) {
+            return override;
+        }
+        // 2. Walk up from the extension dir looking for .venv (portable, no hardcoded home paths)
         const candidates = [
-            GLib.build_filenamev([home, 'Desktop', 'AI_Enginniering', 'writing_assistant', '.venv', 'bin', 'python']),
-            GLib.build_filenamev([this.path, '..', '.venv', 'bin', 'python']),
             GLib.build_filenamev([this.path, '.venv', 'bin', 'python']),
+            GLib.build_filenamev([this.path, '..', '.venv', 'bin', 'python']),
+            GLib.build_filenamev([this.path, '..', '..', '.venv', 'bin', 'python']),
         ];
         for (const venvPython of candidates) {
             if (GLib.file_test(venvPython, GLib.FileTest.IS_EXECUTABLE)) {
                 return venvPython;
             }
+        }
+        // 3. Installed entry point on PATH (pip install / .deb)
+        const onPath = GLib.find_program_in_path('writing-companion');
+        if (onPath) {
+            return onPath;
         }
         return 'python3';
     }
@@ -216,12 +226,12 @@ export default class WritingAssistantExtension extends Extension {
             const jsonInput = JSON.stringify(payload);
             let isTimedOut = false;
 
-            const timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 25000, () => {
+            const timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 7000, () => {
                 isTimedOut = true;
                 try {
                     proc.force_exit();
                 } catch (e) {}
-                if (callback) callback(new Error('Process timed out after 25000ms.'));
+                if (callback) callback(new Error('Process timed out after 7000ms.'));
                 return GLib.SOURCE_REMOVE;
             });
 

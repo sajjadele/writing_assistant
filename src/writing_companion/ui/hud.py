@@ -8,10 +8,20 @@ import sys
 import subprocess
 from typing import Optional, Callable
 
-import gi
-gi.require_version("Gtk", "4.0")
-gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw, Gdk, GLib, Pango
+try:
+    import gi
+    gi.require_version("Gtk", "4.0")
+    gi.require_version("Adw", "1")
+    from gi.repository import Gtk, Adw, Gdk, GLib, Pango
+    HUD_GTK_AVAILABLE = True
+except Exception:  # pragma: no cover - Windows / no GTK runtime
+    Gtk = Adw = Gdk = GLib = Pango = None  # type: ignore[assignment]
+    HUD_GTK_AVAILABLE = False
+
+
+def _require_hud_gtk() -> None:
+    if not HUD_GTK_AVAILABLE:
+        raise RuntimeError("GTK4 runtime not available; HUD is Linux-only.")
 
 from writing_companion.core.schema import SingleInferenceResponse, ChangeItem
 
@@ -158,10 +168,14 @@ HUD_CSS = """
 """
 
 
-class WritingAssistantHUDWindow(Gtk.Window):
+_HUD_BASE = Gtk.Window if HUD_GTK_AVAILABLE else object
+
+
+class WritingAssistantHUDWindow(_HUD_BASE):
     """Modern Libadwaita/GTK4 In-Place HUD Window."""
 
     def __init__(self, app=None):
+        _require_hud_gtk()
         super().__init__(
             title="Writing Assistant HUD",
             application=app,
@@ -178,6 +192,11 @@ class WritingAssistantHUDWindow(Gtk.Window):
         self._on_copy_only: Optional[Callable[[str], None]] = None
         self._on_dashboard: Optional[Callable[[], None]] = None
         self._current_corrected_text: str = ""
+        # Anchor near the text selection (best-effort: Wayland compositors
+        # control final placement, but we keep the target for present/focus
+        # and for reuse by the Windows adapter which can geometry() exactly).
+        self._anchor_x: int = 0
+        self._anchor_y: int = 0
 
         self._load_css()
         self._build_ui()
@@ -251,7 +270,7 @@ class WritingAssistantHUDWindow(Gtk.Window):
         k_esc = Gtk.Label(label="Esc")
         k_esc.add_css_class("hud-kbd-badge")
         lbl_esc = Gtk.Label(label="انصراف")
-        lbl_esc.add_css_label = "hud-kbd-label"
+        lbl_esc.add_css_class("hud-kbd-label")
         esc_box.append(k_esc)
         esc_box.append(lbl_esc)
         self.footer_box.append(esc_box)
@@ -305,6 +324,21 @@ class WritingAssistantHUDWindow(Gtk.Window):
                 self.hide()
             return True
         return False
+
+    def position_near(self, x: int = 0, y: int = 0) -> None:
+        """Remember the requested anchor and present near it (best-effort).
+
+        GTK4/Wayland does not allow clients to force absolute coordinates
+        (no gtk_window_move); the compositor decides final placement.
+        We therefore store/clamp the anchor and present the window so the
+        focus follows the invocation. The Windows Tkinter adapter reuses
+        the same (x, y) contract with exact geometry() placement.
+        """
+        if x > 0 or y > 0:
+            # Clamp to non-negative; keep a small cursor offset like popup.js (+15).
+            self._anchor_x = max(0, int(x) + 15)
+            self._anchor_y = max(0, int(y) + 15)
+        self.present()
 
     def show_loading(self, provider_name: str = "Analyzing..."):
         """Render loading state."""

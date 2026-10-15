@@ -3,10 +3,25 @@
 import os
 import json
 from pathlib import Path
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, field
 
 USER_CONFIG_DIR = Path(os.path.expanduser("~/.config/writing_companion"))
 USER_CONFIG_FILE = USER_CONFIG_DIR / "settings.json"
+
+
+def _default_db_path() -> Path:
+    """Platform-aware default SQLite path.
+
+    Linux: ~/.local/share/writing_companion/history.db (XDG)
+    Windows: %APPDATA%/writing_companion/history.db
+    """
+    if os.name == "nt":
+        base = os.getenv("APPDATA") or os.path.expanduser("~")
+        return Path(base) / "writing_companion" / "history.db"
+    return Path(os.path.expanduser("~/.local/share/writing_companion/history.db"))
+
+
+DEFAULT_DB_PATH = _default_db_path()
 
 
 @dataclass(frozen=True)
@@ -17,8 +32,8 @@ class Settings:
     ai_provider: str = "auto"
     proxy: str = ""
     
-    # Storage
-    db_path: Path = Path(os.path.expanduser("~/.local/share/writing_companion/history.db"))
+    # Storage (platform-aware default; see _default_db_path)
+    db_path: Path = field(default_factory=_default_db_path)
     
     # Providers config
     groq_model: str = "llama-3.3-70b-versatile"
@@ -81,8 +96,8 @@ def load_settings() -> Settings:
     ollama_host = user_conf.get("ollama_host") or os.getenv("OLLAMA_HOST", "http://localhost:11434")
     ollama_model = user_conf.get("ollama_model") or os.getenv("OLLAMA_MODEL", "llama3.2")
     
-    db_path_str = user_conf.get("db_path") or os.getenv("DB_PATH", "~/.local/share/writing_companion/history.db")
-    db_path = Path(os.path.expanduser(db_path_str))
+    db_path_str = user_conf.get("db_path") or os.getenv("DB_PATH", str(DEFAULT_DB_PATH))
+    db_path = Path(os.path.expandvars(os.path.expanduser(db_path_str)))
 
     proxy = user_conf.get("proxy") or os.getenv("PROXY") or os.getenv("HTTP_PROXY") or os.getenv("HTTPS_PROXY") or ""
     if not proxy:

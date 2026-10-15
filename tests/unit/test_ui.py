@@ -1,10 +1,11 @@
-"""Unit tests for Libadwaita HUD and Desktop Application."""
+"""Unit tests for Libadwaita HUD and Desktop Application (Linux-only)."""
 
 import pytest
-import gi
+
+gi = pytest.importorskip("gi", reason="GTK runtime not available (Windows/CI)")
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw
+from gi.repository import Gtk, Adw  # noqa: E402
 
 from writing_companion.core.schema import SingleInferenceResponse, ChangeItem
 from writing_companion.ui.hud import WritingAssistantHUDWindow

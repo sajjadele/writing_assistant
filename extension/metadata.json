@@ -4,7 +4,9 @@
   "uuid": "writing-assistant@sajjadele.github.com",
   "settings-schema": "org.gnome.shell.extensions.writing-assistant",
   "shell-version": [
-    "46"
+    "46",
+    "47",
+    "48"
   ],
   "url": "https://github.com/sajjadele/writing_assistant"
 }

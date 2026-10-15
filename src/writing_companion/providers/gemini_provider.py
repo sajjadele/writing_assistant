@@ -10,10 +10,11 @@ from writing_companion.core.prompt import SYSTEM_PROMPT
 class GeminiProvider(BaseProvider):
     """Gemini 2.0 Flash provider using direct REST API with JSON schema enforcement."""
 
-    def __init__(self, api_key: str, model: str = "gemini-3.5-flash-lite", proxy: str = ""):
+    def __init__(self, api_key: str, model: str = "gemini-3.5-flash-lite", proxy: str = "", timeout: float = 7.0):
         self.api_key = api_key.strip()
         self.model = model
         self.proxy = proxy.strip() if proxy else None
+        self.timeout = timeout
         self.url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
 
     @property
@@ -44,7 +45,7 @@ class GeminiProvider(BaseProvider):
             },
         }
 
-        client_kwargs = {"timeout": 25.0}
+        client_kwargs = {"timeout": self.timeout}
         if self.proxy:
             client_kwargs["proxy"] = self.proxy
 

@@ -10,10 +10,24 @@ import asyncio
 import threading
 from typing import Optional
 
-import gi
-gi.require_version("Gtk", "4.0")
-gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw, Gio, GLib
+try:
+    import gi
+    gi.require_version("Gtk", "4.0")
+    gi.require_version("Adw", "1")
+    from gi.repository import Gtk, Adw, Gio, GLib
+    GTK_AVAILABLE = True
+except Exception:  # pragma: no cover - Windows / no GTK runtime
+    Gtk = Adw = Gio = GLib = None  # type: ignore[assignment]
+    GTK_AVAILABLE = False
+
+
+def _require_gtk() -> None:
+    if not GTK_AVAILABLE:
+        raise RuntimeError(
+            "GTK4/Libadwaita runtime is not available on this system. "
+            "The Linux HUD/Dashboard requires GTK; on Windows use the "
+            "Tkinter adapter (writing_companion.adapters.windows)."
+        )
 
 from writing_companion.config import load_settings
 from writing_companion.storage.sqlite_store import SQLiteStore
@@ -44,10 +58,14 @@ def notify_extension_paste():
         print(f"[APP] DBus auto-paste notice: {e}", file=sys.stderr)
 
 
-class WritingAssistantApp(Adw.Application):
-    """Single-instance resident Libadwaita Application."""
+_BaseApp = Adw.Application if GTK_AVAILABLE else object
+
+
+class WritingAssistantApp(_BaseApp):
+    """Single-instance resident Libadwaita Application (Linux only)."""
 
     def __init__(self):
+        _require_gtk()
         super().__init__(
             application_id=APPLICATION_ID,
             flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE,
@@ -135,6 +153,12 @@ class WritingAssistantApp(Adw.Application):
         # Reload settings in case user updated API keys in dashboard
         self.settings = load_settings()
 
+        # Position near the invocation point (uses x, y instead of ignoring them)
+        try:
+            self.hud_window.position_near(x, y)
+        except Exception:
+            pass
+
         # Show loading state
         self.hud_window.show_loading(provider_name=f"Evaluating via {self.settings.ai_provider.upper()}")
 
@@ -193,6 +217,7 @@ class WritingAssistantApp(Adw.Application):
 
 
 def main():
+    _require_gtk()
     app = WritingAssistantApp()
     sys.exit(app.run(sys.argv))
 

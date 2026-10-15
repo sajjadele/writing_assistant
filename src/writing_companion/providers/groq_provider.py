@@ -10,9 +10,10 @@ from writing_companion.core.prompt import SYSTEM_PROMPT
 class GroqProvider(BaseProvider):
     """Groq API provider with structured JSON mode and ultra-low TTFT."""
 
-    def __init__(self, api_key: str, model: str = "llama-3.3-70b-versatile"):
+    def __init__(self, api_key: str, model: str = "llama-3.3-70b-versatile", timeout: float = 7.0):
         self.api_key = api_key.strip()
         self.model = model
+        self.timeout = timeout
         self.url = "https://api.groq.com/openai/v1/chat/completions"
 
     @property
@@ -39,7 +40,7 @@ class GroqProvider(BaseProvider):
             "max_tokens": 1000,
         }
 
-        async with httpx.AsyncClient(timeout=4.0) as client:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.post(self.url, headers=headers, json=payload)
             resp.raise_for_status()
             data = resp.json()
