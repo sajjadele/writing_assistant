@@ -127,14 +127,14 @@ class SQLiteStore:
         self,
         limit: int = 100,
         offset: int = 0,
-        search: str = "",
+        search: Optional[str] = "",
         accepted_filter: Optional[bool] = None,
     ) -> List[Dict[str, Any]]:
         """List correction events with search and filter support."""
         query = "SELECT * FROM correction_events WHERE 1=1"
         params: List[Any] = []
 
-        if search.strip():
+        if search and search.strip():
             query += " AND (original_text LIKE ? OR corrected_text LIKE ? OR interpreted_meaning_fa LIKE ?)"
             term = f"%{search.strip()}%"
             params.extend([term, term, term])

@@ -172,21 +172,7 @@ def run_daemon(preferred_backend: str = "auto") -> int:
     root = tk.Tk()
     root.withdraw()
 
-    def poll() -> None:
-        while True:
-            try:
-                activations.get_nowait()
-            except queue.Empty:
-                break
-            text = get_clipboard_text()
-            if not text:
-                print("Clipboard is empty: copy/select text first.")
-                continue
-            try:
-                show_popup_for_text(text, preferred_backend, master=root)
-            except Exception as e:
-                print(f"Error: {e}", file=sys.stderr)
-        root.after(200, poll)
+    poll = _make_poll(root, activations, preferred_backend)
 
     try:
         cleanup = register_ctrl_alt_g(lambda: activations.put("go"))
@@ -208,11 +194,134 @@ def run_daemon(preferred_backend: str = "auto") -> int:
     return 0
 
 
+def _make_poll(root, activations, preferred_backend):
+    """Shared activation consumer: clipboard -> popup (main thread only)."""
+    import queue as _queue
+
+    def poll() -> None:
+        while True:
+            try:
+                activations.get_nowait()
+            except _queue.Empty:
+                break
+            text = get_clipboard_text()
+            if not text:
+                print("Clipboard is empty: copy/select text first.")
+                continue
+            try:
+                show_popup_for_text(text, preferred_backend, master=root)
+            except Exception as e:
+                print(f"Error: {e}", file=sys.stderr)
+        root.after(200, poll)
+
+    return poll
+
+
+def run_tray(preferred_backend: str = "auto") -> int:
+    """Resident tray controller: hotkey service + tray menu + windows.
+
+    Single process owns everything (hotkey listener, hidden Tk root, tray
+    icon, history/settings windows). The tray menu can pause/resume the
+    hotkey service without killing the process.
+    """
+    import queue
+    import tkinter as tk
+
+    try:
+        from writing_companion.adapters.windows.hotkey import register_ctrl_alt_g
+    except Exception as e:
+        print(f"Hotkey backend unavailable: {e}", file=sys.stderr)
+        return 1
+    try:
+        from writing_companion.adapters.windows.tray import WinTray
+        from writing_companion.adapters.windows.history_win import HistoryWindow
+        from writing_companion.adapters.windows.settings_win import SettingsWindow
+    except Exception as e:
+        print(f"Tray UI unavailable: {e}", file=sys.stderr)
+        return 1
+
+    activations: queue.Queue = queue.Queue()
+    root = tk.Tk()
+    root.withdraw()
+    poll = _make_poll(root, activations, preferred_backend)
+
+    state = {"cleanup": None, "tray": None}
+
+    def is_running() -> bool:
+        return state["cleanup"] is not None
+
+    def start_service() -> None:
+        if state["cleanup"] is None:
+            try:
+                state["cleanup"] = register_ctrl_alt_g(lambda: activations.put("go"))
+                print("Service started: listening on Ctrl+Alt+G.")
+            except RuntimeError as e:
+                print(str(e), file=sys.stderr)
+                return
+        _sync_tip()
+
+    def stop_service() -> None:
+        if state["cleanup"] is not None:
+            try:
+                state["cleanup"]()
+            except Exception:
+                pass
+            state["cleanup"] = None
+            print("Service paused.")
+        _sync_tip()
+
+    def toggle() -> None:
+        stop_service() if is_running() else start_service()
+
+    def _sync_tip() -> None:
+        try:
+            if state["tray"] is not None:
+                state["tray"].refresh_tip(is_running())
+        except Exception:
+            pass
+
+    def do_quit() -> None:
+        stop_service()
+        try:
+            if state["tray"] is not None:
+                state["tray"].remove()
+        except Exception:
+            pass
+        try:
+            root.quit()
+            root.destroy()
+        except Exception:
+            pass
+
+    try:
+        state["tray"] = WinTray(
+            on_toggle=toggle,
+            on_history=lambda: HistoryWindow.open(root),
+            on_settings=lambda: SettingsWindow.open(root),
+            on_quit=do_quit,
+            is_running=is_running,
+        )
+    except Exception as e:
+        print(f"Could not create tray icon: {e}", file=sys.stderr)
+        return 1
+
+    start_service()
+    root.after(200, poll)
+    try:
+        root.mainloop()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        do_quit()
+    return 0
+
+
 def main(argv: list | None = None) -> int:
     parser = argparse.ArgumentParser(description="Writing Assistant Windows adapter (Tkinter)")
     parser.add_argument("--once", action="store_true", help="Process one --text and print IPC JSON (no GUI)")
     parser.add_argument("--popup", action="store_true", help="Process one --text with the Tkinter popup")
-    parser.add_argument("--daemon", action="store_true", help="Listen for Ctrl+Alt+G globally")
+    parser.add_argument("--daemon", action="store_true", help="Listen for Ctrl+Alt+G globally (headless)")
+    parser.add_argument("--tray", action="store_true", help="Resident tray controller (service + history + settings)")
     parser.add_argument("--text", type=str, default="", help="Input text for --once/--popup")
     parser.add_argument("--from-clipboard", action="store_true", help="Wait for clipboard text then show popup")
     parser.add_argument("--wait", type=int, default=60, help="Seconds to wait for clipboard (default 60)")
@@ -254,6 +363,8 @@ def main(argv: list | None = None) -> int:
         return 0
     if args.daemon:
         return run_daemon(args.backend)
+    if args.tray:
+        return run_tray(args.backend)
     parser.print_help()
     return 0
 
